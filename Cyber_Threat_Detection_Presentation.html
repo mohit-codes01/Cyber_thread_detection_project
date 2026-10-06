@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cyber Threat Detection System - Project Presentation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  @page {
+    size: 1920px 1080px;
+    margin: 0;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background-color: #060a12;
+    color: #e2e8f0;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .slide {
+    width: 1920px;
+    height: 1080px;
+    page-break-after: always;
+    break-after: page;
+    position: relative;
+    overflow: hidden;
+    padding: 60px 80px 45px 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: radial-gradient(circle at 15% 15%, rgba(14, 165, 233, 0.14) 0%, transparent 45%),
+                radial-gradient(circle at 85% 85%, rgba(244, 63, 94, 0.09) 0%, transparent 45%),
+                linear-gradient(135deg, #070c18 0%, #0a1122 50%, #060913 100%);
+  }
+
+  .slide::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: 
+      linear-gradient(to right, rgba(56, 189, 248, 0.035) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(56, 189, 248, 0.035) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .slide::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 80px;
+    right: 80px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #00d9ff, #3b82f6, transparent);
+    z-index: 1;
+  }
+
+  .slide-content-wrapper {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .slide-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 22px;
+    border-bottom: 1px solid rgba(56, 189, 248, 0.16);
+    padding-bottom: 16px;
+  }
+
+  .header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .category-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #00d9ff;
+    background: rgba(0, 217, 255, 0.1);
+    border: 1px solid rgba(0, 217, 255, 0.28);
+    padding: 4px 12px;
+    border-radius: 6px;
+    width: fit-content;
+  }
+
+  .slide-title {
+    font-size: 40px;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+    line-height: 1.15;
+    background: linear-gradient(135deg, #ffffff 60%, #93c5fd 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .slide-subtitle {
+    font-size: 17px;
+    font-weight: 400;
+    color: #94a3b8;
+  }
+
+  .slide-number-box {
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .slide-number {
+    font-size: 28px;
+    font-weight: 700;
+    color: #38bdf8;
+  }
+
+  .slide-total {
+    font-size: 15px;
+    color: #64748b;
+  }
+
+  .slide-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(56, 189, 248, 0.12);
+    padding-top: 12px;
+    margin-top: 18px;
+    font-size: 13px;
+    color: #64748b;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .footer-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .footer-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #10b981;
+    box-shadow: 0 0 10px #10b981;
+    display: inline-block;
+  }
+
+  .main-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 26px;
+    height: 100%;
+    align-items: stretch;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 22px;
+    height: 100%;
+    align-items: stretch;
+  }
+
+  .grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+  }
+
+  .cyber-card {
+    background: rgba(13, 22, 41, 0.78);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 16px;
+    padding: 24px 28px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cyber-card.accent-blue {
+    border-top: 3px solid #38bdf8;
+  }
+
+  .cyber-card.accent-cyan {
+    border-top: 3px solid #00d9ff;
+  }
+
+  .cyber-card.accent-green {
+    border-top: 3px solid #10b981;
+  }
+
+  .cyber-card.accent-rose {
+    border-top: 3px solid #f43f5e;
+  }
+
+  .cyber-card.accent-purple {
+    border-top: 3px solid #a855f7;
+  }
+
+  .card-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .card-icon {
+    font-size: 22px;
+  }
+
+  .cyber-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .cyber-list li {
+    font-size: 15.5px;
+    line-height: 1.55;
+    color: #cbd5e1;
+    position: relative;
+    padding-left: 24px;
+  }
+
+  .cyber-list li::before {
+    content: '✦';
+    position: absolute;
+    left: 0;
+    top: 1px;
+    color: #00d9ff;
+    font-size: 14px;
+  }
+
+  .cyber-list.rose li::before {
+    color: #f43f5e;
+    content: '✖';
+  }
+
+  .cyber-list.green li::before {
+    color: #10b981;
+    content: '✔';
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.5px;
+  }
+
+  .badge-cyan {
+    background: rgba(0, 217, 255, 0.15);
+    color: #00d9ff;
+    border: 1px solid rgba(0, 217, 255, 0.35);
+  }
+
+  .badge-green {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+  }
+
+  .badge-rose {
+    background: rgba(244, 63, 94, 0.15);
+    color: #fb7185;
+    border: 1px solid rgba(244, 63, 94, 0.35);
+  }
+
+  .badge-purple {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.35);
+  }
+
+  .highlight-cyan {
+    color: #00d9ff;
+    font-weight: 600;
+  }
+
+  .highlight-green {
+    color: #34d399;
+    font-weight: 600;
+  }
+
+  .highlight-rose {
+    color: #fb7185;
+    font-weight: 600;
+  }
+
+  .stat-card {
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #94a3b8;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .stat-value {
+    font-size: 30px;
+    font-weight: 800;
+    color: #ffffff;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .stat-desc {
+    font-size: 13px;
+    color: #64748b;
+  }
+
+  .flow-box {
+    background: #090f1d;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 10px;
+    padding: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    color: #93c5fd;
+    white-space: pre-wrap;
+  }
+
+  .hero-slide {
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+    padding: 70px 100px;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 20px;
+    border-radius: 30px;
+    background: rgba(0, 217, 255, 0.1);
+    border: 1px solid rgba(0, 217, 255, 0.35);
+    color: #00d9ff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    margin-bottom: 24px;
+    box-shadow: 0 0 25px rgba(0, 217, 255, 0.2);
+  }
+
+  .hero-title {
+    font-size: 60px;
+    font-weight: 900;
+    line-height: 1.12;
+    letter-spacing: -1.5px;
+    color: #ffffff;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #ffffff 40%, #38bdf8 80%, #00d9ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .hero-subtitle {
+    font-size: 22px;
+    font-weight: 400;
+    color: #94a3b8;
+    max-width: 980px;
+    margin: 0 auto 36px auto;
+    line-height: 1.45;
+  }
+
+  .hero-tags {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 45px;
+  }
+
+  .hero-tag-item {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    padding: 10px 22px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #cbd5e1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .hero-footer-meta {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: #64748b;
+  }
+</style>
+</head>
+<body>
+
+<!-- SLIDE 1: HERO COVER -->
+<div class="slide hero-slide">
+  <div class="slide-content-wrapper" style="justify-content: center; align-items: center;">
+    <div>
+      <div class="hero-badge">
+        <span class="footer-status-dot"></span>
+        AI-POWERED CYBERSECURITY PLATFORM
+      </div>
+      <h1 class="hero-title">Cyber Threat Detection<br>System</h1>
+      <p class="hero-subtitle">
+        Machine Learning-Driven SOC Platform for Real-Time Network Intrusion Classification, Anomaly Detection & Threat Intelligence
+      </p>
+
+      <div class="hero-tags">
+        <div class="hero-tag-item"><span style="color:#00d9ff;">🌲</span> Random Forest Classifier</div>
+        <div class="hero-tag-item"><span style="color:#10b981;">📊</span> UNSW-NB15 Benchmark</div>
+        <div class="hero-tag-item"><span style="color:#f43f5e;">⚡</span> Real-Time Traffic Inference</div>
+        <div class="hero-tag-item"><span style="color:#a855f7;">🛡️</span> Interactive SOC Dashboard</div>
+      </div>
+
+      <div class="hero-footer-meta">
+        <div><span>PROJECT TYPE:</span> <span style="color:#ffffff;">Machine Learning & Cybersecurity</span></div>
+        <div><span>DATASET:</span> <span style="color:#ffffff;">UNSW-NB15 Network Flows</span></div>
+        <div><span>STATUS:</span> <span style="color:#10b981;">Verified & Production-Ready</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 2: INTRODUCTION & PROBLEM STATEMENT -->
+<div class="slide">
+  <div class="slide-content-wrapper">
+    <div class="slide-header">
+      <div class="header-left">
+        <div class="category-tag">01. INTRODUCTION & PROBLEM CONTEXT</div>
+        <div class="slide-title">Why Cyber Threat Detection?</div>
+        <div class="slide-subtitle">Bridging the gap between explosive network traffic volumes and human analyst limitations</div>
+      </div>
+      <div class="slide-number-box">
+        <div class="slide-number">02</div>
+        <div class="slide-total">/ 12</div>
+      </div>
+    </div>
+
+    <div class="main-body">
+      <div class="grid-2">
+        <div class="cyber-card accent-rose">
+          <div class="card-title"><span class="card-icon">⚠️</span> The Traditional Security Crisis</div>
+          <ul class="cyber-list rose">
+            <li><strong class="highlight-rose">Packet Overload:</strong> Modern enterprise networks process millions of flow records per second, making manual inspection impossible.</li>
+            <li><strong class="highlight-rose">Static Signature Failures:</strong> Legacy firewalls rely on pre-stored hashes and rules, which immediately fail against zero-day and polymorphic attacks.</li>
+            <li><strong class="highlight-rose">Alert Fatigue:</strong> Security Operations Centers (SOC) face thousands of false positives daily, drowning critical intrusion signals.</li>
+            <li><strong class="highlight-rose">Delayed Response Time:</strong> Traditional forensic triage takes hours or days after a breach has already compromised critical infrastructure.</li>
+          </ul>
+        </div>
+
+        <div class="cyber-card accent-cyan">
+          <div class="card-title"><span class="card-icon">💡</span> The Proposed AI Solution</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-cyan">Behavioral Machine Learning:</strong> Learns complex statistical patterns in network flow headers (duration, packet rates, byte sizes, protocol states).</li>
+            <li><strong class="highlight-cyan">Binary Classification:</strong> Instantly classifies network activity into <span class="badge badge-green">Normal (0)</span> or <span class="badge badge-rose">Threat (1)</span>.</li>
+            <li><strong class="highlight-cyan">Model Prediction Confidence:</strong> Generates probabilistic confidence scores (0% to 100%) for every single network packet record.</li>
+            <li><strong class="highlight-cyan">Unified SOC Interface:</strong> Translates low-level network telemetry into actionable executive metrics, donut charts, and downloadable reports.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <div class="footer-left"><span class="footer-status-dot"></span> Cyber Threat Detection System • Core Motivation</div>
+      <div>UNSW-NB15 Benchmark • Random Forest Pipeline</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 3: PROJECT OBJECTIVES -->
+<div class="slide">
+  <div class="slide-content-wrapper">
+    <div class="slide-header">
+      <div class="header-left">
+        <div class="category-tag">02. PROJECT OBJECTIVES</div>
+        <div class="slide-title">Core Goals & Architectural Standards</div>
+        <div class="slide-subtitle">Clear project criteria designed for real-world reliability and SOC operator usability</div>
+      </div>
+      <div class="slide-number-box">
+        <div class="slide-number">03</div>
+        <div class="slide-total">/ 12</div>
+      </div>
+    </div>
+
+    <div class="main-body">
+      <div class="grid-3">
+        <div class="cyber-card accent-cyan">
+          <div class="card-title"><span class="card-icon">🎯</span> Real ML Inference</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-cyan">Zero Hardcoded Metrics:</strong> Every single metric on the dashboard is computed live from the loaded machine learning model.</li>
+            <li><strong class="highlight-cyan">Dynamic Confidence:</strong> Computes probability distribution using <code style="color:#38bdf8;">predict_proba()</code>.</li>
+            <li><strong class="highlight-cyan">Rapid Batch Processing:</strong> Evaluates thousands of network flow records within milliseconds.</li>
+          </ul>
+        </div>
+
+        <div class="cyber-card accent-blue">
+          <div class="card-title"><span class="card-icon">🖥️</span> Dual SOC Dashboard</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-cyan">Interactive Streamlit UI:</strong> Instant CSV upload, dynamic cards, donut charts, and live data filtering.</li>
+            <li><strong class="highlight-cyan">Full-Stack FastAPI Backend:</strong> Production REST API endpoints, JWT auth, and SQLite persistence.</li>
+            <li><strong class="highlight-cyan">Executive Reports:</strong> Automated PDF report generation and CSV result export.</li>
+          </ul>
+        </div>
+
+        <div class="cyber-card accent-green">
+          <div class="card-title"><span class="card-icon">🛡️</span> Robustness & Safety</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-green">Strict Validation:</strong> Verifies incoming CSV features against trained model schema before inference.</li>
+            <li><strong class="highlight-green">Zero-Crash Design:</strong> Handles missing features, missing labels, and missing models gracefully with clean alerts.</li>
+            <li><strong class="highlight-green">100% Test Verified:</strong> Validated with an automated 10-scenario verification suite.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px;" class="grid-4">
+        <div class="stat-card">
+          <div class="stat-label">Model Pipeline</div>
+          <div class="stat-value" style="color:#00d9ff;">Random Forest</div>
+          <div class="stat-desc">100 Estimators + Balanced Weights</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Classification Target</div>
+          <div class="stat-value" style="color:#34d399;">Binary (0 / 1)</div>
+          <div class="stat-desc">0 = Normal, 1 = Threat</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Dataset Standard</div>
+          <div class="stat-value" style="color:#f59e0b;">UNSW-NB15</div>
+          <div class="stat-desc">42 Extracted Network Features</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Test Verification</div>
+          <div class="stat-value" style="color:#10b981;">10 / 10 PASS</div>
+          <div class="stat-desc">End-to-End System Reliability</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <div class="footer-left"><span class="footer-status-dot"></span> System Engineering Principles</div>
+      <div>Designed for Reliability, Precision & Speed</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 4: DATASET - UNSW-NB15 -->
+<div class="slide">
+  <div class="slide-content-wrapper">
+    <div class="slide-header">
+      <div class="header-left">
+        <div class="category-tag">03. DATASET SELECTION</div>
+        <div class="slide-title">UNSW-NB15 Network Benchmark</div>
+        <div class="slide-subtitle">A modern, realistic cyber network traffic dataset reflecting contemporary attack vectors</div>
+      </div>
+      <div class="slide-number-box">
+        <div class="slide-number">04</div>
+        <div class="slide-total">/ 12</div>
+      </div>
+    </div>
+
+    <div class="main-body">
+      <div class="grid-2">
+        <div class="cyber-card accent-blue">
+          <div class="card-title"><span class="card-icon">📁</span> Dataset Characteristics</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-cyan">Origin:</strong> Created by the Australian Centre for Cyber Security (ACCS) at the University of New South Wales (UNSW).</li>
+            <li><strong class="highlight-cyan">Modern Context:</strong> Overcomes the severe flaws and outdated attack profiles of 1999 KDD-Cup/NSL-KDD datasets.</li>
+            <li><strong class="highlight-cyan">Traffic Diversity:</strong> Combines authentic real-world background traffic with contemporary synthetic attack vectors.</li>
+            <li><strong class="highlight-cyan">Files In Project:</strong>
+              <div style="margin-top:6px; font-family:'JetBrains Mono',monospace; font-size:13px; color:#93c5fd;">
+                • data/UNSW_NB15_training-set.csv (175,341 records)<br>
+                • data/UNSW_NB15_testing-set.csv (82,332 records)<br>
+                • data/sample/sample_network_traffic.csv (500 records)
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="cyber-card accent-cyan">
+          <div class="card-title"><span class="card-icon">🔍</span> Key Network Flow Features (42 Features)</div>
+          <div style="display:flex; flex-direction:column; gap:9px;">
+            <div style="background:rgba(15,23,42,0.8); border:1px solid rgba(56,189,248,0.2); padding:9px 14px; border-radius:8px;">
+              <strong style="color:#00d9ff;">Flow Duration & Packet Metrics:</strong>
+              <div style="font-size:13.5px; color:#cbd5e1; font-family:'JetBrains Mono',monospace; margin-top:2px;">
+                dur (flow duration), spkts (source packets), dpkts (destination packets)
+              </div>
+            </div>
+            <div style="background:rgba(15,23,42,0.8); border:1px solid rgba(56,189,248,0.2); padding:9px 14px; border-radius:8px;">
+              <strong style="color:#00d9ff;">Byte Volume & Transfer Rates:</strong>
+              <div style="font-size:13.5px; color:#cbd5e1; font-family:'JetBrains Mono',monospace; margin-top:2px;">
+                sbytes (source bytes), dbytes (destination bytes), sload, dload
+              </div>
+            </div>
+            <div style="background:rgba(15,23,42,0.8); border:1px solid rgba(56,189,248,0.2); padding:9px 14px; border-radius:8px;">
+              <strong style="color:#00d9ff;">Protocols & Service Attributes:</strong>
+              <div style="font-size:13.5px; color:#cbd5e1; font-family:'JetBrains Mono',monospace; margin-top:2px;">
+                proto (tcp, udp, arp, ospf...), service (http, dns, ftp, smtp...), state
+              </div>
+            </div>
+            <div style="background:rgba(15,23,42,0.8); border:1px solid rgba(56,189,248,0.2); padding:9px 14px; border-radius:8px;">
+              <strong style="color:#00d9ff;">Connection & TCP Window Features:</strong>
+              <div style="font-size:13.5px; color:#cbd5e1; font-family:'JetBrains Mono',monospace; margin-top:2px;">
+                sttl, dttl, swin, dwin, tcprtt, synack, ackdat, ct_state_ttl
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <div class="footer-left"><span class="footer-status-dot"></span> Network Telemetry Extraction</div>
+      <div>Input Metadata Columns 'id', 'attack_cat', 'label' Dropped Before Inference</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 5: PREPROCESSING PIPELINE -->
+<div class="slide">
+  <div class="slide-content-wrapper">
+    <div class="slide-header">
+      <div class="header-left">
+        <div class="category-tag">04. DATA PREPROCESSING</div>
+        <div class="slide-title">Scikit-learn Automated Preprocessing Pipeline</div>
+        <div class="slide-subtitle">Ensuring robust data cleaning, missing value imputation, and categorical encoding</div>
+      </div>
+      <div class="slide-number-box">
+        <div class="slide-number">05</div>
+        <div class="slide-total">/ 12</div>
+      </div>
+    </div>
+
+    <div class="main-body">
+      <div class="grid-2">
+        <div class="cyber-card accent-cyan">
+          <div class="card-title"><span class="card-icon">⚙️</span> Two-Branch ColumnTransformer</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-cyan">Column Dropping:</strong> Automatically removes non-feature columns <code style="color:#f43f5e;">['id', 'attack_cat']</code> to eliminate data leakage and target contamination.</li>
+            <li><strong class="highlight-cyan">Numerical Feature Pipeline:</strong>
+              <div style="margin-top:4px; padding-left:10px; font-size:14px; color:#94a3b8;">
+                • Applied to all continuous flow metrics (bytes, packets, rates, timers)<br>
+                • <code style="color:#00d9ff;">SimpleImputer(strategy='median')</code>: Resilient against heavy network outliers
+              </div>
+            </li>
+            <li><strong class="highlight-cyan">Categorical Feature Pipeline:</strong>
+              <div style="margin-top:4px; padding-left:10px; font-size:14px; color:#94a3b8;">
+                • Applied to string features: <code style="color:#38bdf8;">['proto', 'service', 'state']</code><br>
+                • <code style="color:#00d9ff;">SimpleImputer(strategy='most_frequent')</code>: Fills nulls<br>
+                • <code style="color:#00d9ff;">OneHotEncoder(handle_unknown='ignore')</code>: Prevents crashes when new unseen protocols appear in live network traffic
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="cyber-card accent-blue">
+          <div class="card-title"><span class="card-icon">💻</span> Pipeline Architecture Code</div>
+          <div class="flow-box"># Preprocessing Transformers
+numeric_pipeline = Pipeline([
+    ("imputer", SimpleImputer(strategy="median"))
+])
+
+categorical_pipeline = Pipeline([
+    ("imputer", SimpleImputer(strategy="most_frequent")),
+    ("encoder", OneHotEncoder(
+        handle_unknown="ignore", 
+        sparse_output=True
+    ))
+])
+
+preprocessor = ColumnTransformer([
+    ("numeric", numeric_pipeline, numerical_features),
+    ("categorical", categorical_pipeline, categorical_features)
+])
+
+# Complete Production Pipeline
+pipeline = Pipeline([
+    ("preprocessing", preprocessor),
+    ("model", RandomForestClassifier(n_estimators=100))
+])</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <div class="footer-left"><span class="footer-status-dot"></span> Pipeline Integrity</div>
+      <div>End-to-End Serialization via joblib (models/threat_model.pkl)</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 6: MACHINE LEARNING MODEL -->
+<div class="slide">
+  <div class="slide-content-wrapper">
+    <div class="slide-header">
+      <div class="header-left">
+        <div class="category-tag">05. MACHINE LEARNING ENGINE</div>
+        <div class="slide-title">Random Forest Classifier</div>
+        <div class="slide-subtitle">Ensemble decision tree architecture tuned for high detection rate and minimum false alarms</div>
+      </div>
+      <div class="slide-number-box">
+        <div class="slide-number">06</div>
+        <div class="slide-total">/ 12</div>
+      </div>
+    </div>
+
+    <div class="main-body">
+      <div class="grid-3">
+        <div class="cyber-card accent-green">
+          <div class="card-title"><span class="card-icon">🌲</span> Why Random Forest?</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-green">Ensemble Power:</strong> Combines 100 decorrelated decision trees using bagging (bootstrap aggregation) to drastically eliminate individual tree variance.</li>
+            <li><strong class="highlight-green">Non-Linear Patterns:</strong> Effortlessly captures complex non-linear relationships between packet rates, protocols, and attack signatures.</li>
+            <li><strong class="highlight-green">High Dimensionality:</strong> Handles over 42 input features without suffering from the curse of dimensionality.</li>
+          </ul>
+        </div>
+
+        <div class="cyber-card accent-cyan">
+          <div class="card-title"><span class="card-icon">⚡</span> Model Hyperparameters</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-cyan">n_estimators = 100:</strong> 100 independent decision trees voting concurrently on threat status.</li>
+            <li><strong class="highlight-cyan">class_weight = 'balanced':</strong> Automatically adjusts weights inversely proportional to class frequencies, solving intrusion class imbalance.</li>
+            <li><strong class="highlight-cyan">n_jobs = -1:</strong> Utilizes all CPU cores for parallelized inference and rapid training.</li>
+            <li><strong class="highlight-cyan">random_state = 42:</strong> Ensures deterministic, reproducible training runs across all systems.</li>
+          </ul>
+        </div>
+
+        <div class="cyber-card accent-rose">
+          <div class="card-title"><span class="card-icon">📊</span> Inference Outputs</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-rose">Discrete Prediction:</strong>
+              <div style="margin-top:2px;">
+                <code style="color:#00d9ff;">pipeline.predict(X)</code><br>
+                Returns <span class="badge badge-green">0 = Normal</span> or <span class="badge badge-rose">1 = Threat</span>.
+              </div>
+            </li>
+            <li><strong class="highlight-rose">Prediction Confidence:</strong>
+              <div style="margin-top:2px;">
+                <code style="color:#00d9ff;">pipeline.predict_proba(X)</code><br>
+                Extracts the highest probability class: e.g. <span style="color:#38bdf8; font-weight:700;">98.40% Confidence</span>.
+              </div>
+            </li>
+            <li><strong class="highlight-rose">Evaluation Metrics:</strong> Precision, Recall, F1-Score, and full Confusion Matrix.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <div class="footer-left"><span class="footer-status-dot"></span> Model Serialization</div>
+      <div>Stored at models/threat_model.pkl • Loaded into Memory with Streamlit Caching</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 7: SYSTEM ARCHITECTURE -->
+<div class="slide">
+  <div class="slide-content-wrapper">
+    <div class="slide-header">
+      <div class="header-left">
+        <div class="category-tag">06. SYSTEM ARCHITECTURE</div>
+        <div class="slide-title">End-to-End System Workflow</div>
+        <div class="slide-subtitle">From raw network flow CSV ingestion to dynamic SOC visual telemetry</div>
+      </div>
+      <div class="slide-number-box">
+        <div class="slide-number">07</div>
+        <div class="slide-total">/ 12</div>
+      </div>
+    </div>
+
+    <div class="main-body">
+      <div class="cyber-card accent-blue" style="padding: 24px 30px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:16px;">
+          
+          <div style="flex:1; background:rgba(15,23,42,0.9); border:1px solid rgba(56,189,248,0.3); border-radius:10px; padding:18px 14px; text-align:center;">
+            <div style="font-size:24px; margin-bottom:8px;">📥</div>
+            <div style="font-weight:700; color:#ffffff; font-size:15px;">1. File Ingestion</div>
+            <div style="font-size:12px; color:#94a3b8; margin-top:4px;">User uploads CSV (sample or live capture up to 1GB)</div>
+            <div class="badge badge-cyan" style="margin-top:8px;">Streamlit / REST</div>
+          </div>
+
+          <div style="color:#38bdf8; font-size:22px; font-weight:700;">➔</div>
+
+          <div style="flex:1; background:rgba(15,23,42,0.9); border:1px solid rgba(56,189,248,0.3); border-radius:10px; padding:18px 14px; text-align:center;">
+            <div style="font-size:24px; margin-bottom:8px;">🛡️</div>
+            <div style="font-weight:700; color:#ffffff; font-size:15px;">2. Schema Validation</div>
+            <div style="font-size:12px; color:#94a3b8; margin-top:4px;">Validates 42 features against model feature schema</div>
+            <div class="badge badge-green" style="margin-top:8px;">Fault Tolerant</div>
+          </div>
+
+          <div style="color:#38bdf8; font-size:22px; font-weight:700;">➔</div>
+
+          <div style="flex:1; background:rgba(15,23,42,0.9); border:1px solid rgba(56,189,248,0.3); border-radius:10px; padding:18px 14px; text-align:center;">
+            <div style="font-size:24px; margin-bottom:8px;">⚙️</div>
+            <div style="font-weight:700; color:#ffffff; font-size:15px;">3. ML Pipeline</div>
+            <div style="font-size:12px; color:#94a3b8; margin-top:4px;">ColumnTransformer: Imputation + OneHotEncoding</div>
+            <div class="badge badge-purple" style="margin-top:8px;">Scikit-learn</div>
+          </div>
+
+          <div style="color:#38bdf8; font-size:22px; font-weight:700;">➔</div>
+
+          <div style="flex:1; background:rgba(15,23,42,0.9); border:1px solid rgba(56,189,248,0.3); border-radius:10px; padding:18px 14px; text-align:center;">
+            <div style="font-size:24px; margin-bottom:8px;">🌲</div>
+            <div style="font-weight:700; color:#ffffff; font-size:15px;">4. RF Inference</div>
+            <div style="font-size:12px; color:#94a3b8; margin-top:4px;">Calculates Predictions & Confidence Probability</div>
+            <div class="badge badge-rose" style="margin-top:8px;">Random Forest</div>
+          </div>
+
+          <div style="color:#38bdf8; font-size:22px; font-weight:700;">➔</div>
+
+          <div style="flex:1; background:rgba(15,23,42,0.9); border:1px solid rgba(56,189,248,0.3); border-radius:10px; padding:18px 14px; text-align:center;">
+            <div style="font-size:24px; margin-bottom:8px;">📊</div>
+            <div style="font-weight:700; color:#ffffff; font-size:15px;">5. SOC Dashboard</div>
+            <div style="font-size:12px; color:#94a3b8; margin-top:4px;">Dynamic Donut Charts, Stat Cards & CSV Export</div>
+            <div class="badge badge-cyan" style="margin-top:8px;">Interactive UI</div>
+          </div>
+
+        </div>
+      </div>
+
+      <div style="margin-top: 20px;" class="grid-2">
+        <div class="cyber-card accent-cyan">
+          <div class="card-title"><span class="card-icon">⚡</span> Front-End Presentation Layer</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-cyan">Streamlit Web Application:</strong> Lightweight, reactive UI running on <code style="color:#38bdf8;">localhost:8501</code>.</li>
+            <li><strong class="highlight-cyan">Real-Time Refresh:</strong> <code style="color:#00d9ff;">st.rerun()</code> powered refresh button updates timestamps and reloads calculations dynamically.</li>
+          </ul>
+        </div>
+
+        <div class="cyber-card accent-green">
+          <div class="card-title"><span class="card-icon">🗄️</span> Model Management Layer</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-green">Cached Singleton Loader:</strong> <code style="color:#10b981;">@st.cache_resource</code> ensures the 100-tree model loads once into memory.</li>
+            <li><strong class="highlight-green">Zero Latency Inference:</strong> Batch vectorization computes predictions across hundreds of rows in under 0.1 seconds.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <div class="footer-left"><span class="footer-status-dot"></span> Architectural Modularization</div>
+      <div>Clean Separation of Preprocessing, ML Inference, and Presentation</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 8: STREAMLIT SOC DASHBOARD -->
+<div class="slide">
+  <div class="slide-content-wrapper">
+    <div class="slide-header">
+      <div class="header-left">
+        <div class="category-tag">07. APPLICATION FEATURES</div>
+        <div class="slide-title">Interactive Streamlit SOC Dashboard</div>
+        <div class="slide-subtitle">A cybersecurity-themed interface inspired by modern enterprise Security Operations Centers</div>
+      </div>
+      <div class="slide-number-box">
+        <div class="slide-number">08</div>
+        <div class="slide-total">/ 12</div>
+      </div>
+    </div>
+
+    <div class="main-body">
+      <div class="grid-2">
+        <div class="cyber-card accent-cyan">
+          <div class="card-title"><span class="card-icon">📊</span> Dynamic Live Metrics</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-cyan">Total Records Card:</strong> Live count of uploaded network packet records (displays <code style="color:#64748b;">--</code> in standby).</li>
+            <li><strong class="highlight-cyan">Threats Detected Card:</strong> Count of flows classified as <span class="badge badge-rose">1 (Threat)</span>.</li>
+            <li><strong class="highlight-cyan">Normal Traffic Card:</strong> Count of flows classified as <span class="badge badge-green">0 (Normal)</span>.</li>
+            <li><strong class="highlight-cyan">Threat Rate Card:</strong> Exact calculated percentage: <code style="color:#f43f5e;">(Threats / Total) * 100</code>.</li>
+            <li><strong class="highlight-cyan">Model Status Indicator:</strong> Real-time indicator displaying <span style="color:#10b981; font-weight:700;">🟢 Ready to Detect</span> or <span style="color:#38bdf8; font-weight:700;">🟢 Analysis Complete</span>.</li>
+          </ul>
+        </div>
+
+        <div class="cyber-card accent-blue">
+          <div class="card-title"><span class="card-icon">🍩</span> Dual SOC Visualizations</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-cyan">Threat Ratio Donut Chart:</strong>
+              <div style="font-size:14px; color:#94a3b8; margin-top:2px;">
+                Visualizes the distribution of Threat vs Normal flows with the exact percentage rendered boldly in the center.
+              </div>
+            </li>
+            <li><strong class="highlight-cyan">Detection Accuracy Donut Chart:</strong>
+              <div style="font-size:14px; color:#94a3b8; margin-top:2px;">
+                • If ground-truth <code style="color:#00d9ff;">'label'</code> exists in CSV: Calculates true accuracy %, error %, and exact correct count.<br>
+                • If <code style="color:#00d9ff;">'label'</code> is absent: Displays <span class="badge badge-purple">N/A</span> with an explanation message without failing.
+              </div>
+            </li>
+            <li><strong class="highlight-cyan">Confusion Matrix Breakdown:</strong> Displays TP, FP, TN, and FN breakdown when labeled data is supplied.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <div class="footer-left"><span class="footer-status-dot"></span> User Experience Design</div>
+      <div>SOC Dark Theme: #020B18 Background, Cyan Accents, Emerald Normal & Crimson Threat Alerts</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 9: THREAT DETECTION & EXPORT -->
+<div class="slide">
+  <div class="slide-content-wrapper">
+    <div class="slide-header">
+      <div class="header-left">
+        <div class="category-tag">08. ANALYTICS & EXPORT</div>
+        <div class="slide-title">Threat Detection & Results Management</div>
+        <div class="slide-subtitle">Empowering security analysts with dynamic filtering, inspection, and forensic CSV export</div>
+      </div>
+      <div class="slide-number-box">
+        <div class="slide-number">09</div>
+        <div class="slide-total">/ 12</div>
+      </div>
+    </div>
+
+    <div class="main-body">
+      <div class="grid-3">
+        <div class="cyber-card accent-cyan">
+          <div class="card-title"><span class="card-icon">🔍</span> Interactive Table</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-cyan">Full Results Grid:</strong> Every uploaded row enriched with model prediction, status badge, and confidence percentage.</li>
+            <li><strong class="highlight-cyan">Row Limit Selection:</strong> Select preview count (10, 25, 50, 100, or All rows) for smooth browser rendering.</li>
+            <li><strong class="highlight-cyan">Row Indexing:</strong> Clear <code style="color:#38bdf8;">#</code> sequential numbering for forensic tracking.</li>
+          </ul>
+        </div>
+
+        <div class="cyber-card accent-rose">
+          <div class="card-title"><span class="card-icon">🎛️</span> Status Filtering</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-rose">Status Multi-Filter:</strong>
+              <div style="margin-top:4px;">
+                • <span class="badge badge-cyan">All</span>: Complete traffic stream<br>
+                • <span class="badge badge-rose">Threats Only</span>: Isolates active attacks for immediate SOC triage<br>
+                • <span class="badge badge-green">Normal Only</span>: Audits baseline network flows
+              </div>
+            </li>
+            <li><strong class="highlight-rose">Instant UI Filtering:</strong> Instant client-side state filtering without re-running model inference.</li>
+          </ul>
+        </div>
+
+        <div class="cyber-card accent-green">
+          <div class="card-title"><span class="card-icon">💾</span> Results Export</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-green">Download Results Button:</strong> Generates a downloadable CSV with a single click.</li>
+            <li><strong class="highlight-green">Filename:</strong> <code style="color:#10b981;">cyber_threat_detection_results.csv</code></li>
+            <li><strong class="highlight-green">Audit Columns:</strong> Enriches original network flow data with <code style="color:#38bdf8;">Prediction</code>, <code style="color:#38bdf8;">Status</code>, and <code style="color:#38bdf8;">Confidence (%)</code> for forensic investigations.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;" class="cyber-card accent-purple">
+        <div class="card-title" style="margin-bottom:8px;"><span class="card-icon">🧭</span> Sidebar Navigation Structure</div>
+        <div style="display:flex; justify-content:space-around; align-items:center; font-family:'JetBrains Mono',monospace; font-size:14px;">
+          <div><span style="color:#00d9ff;">🏠</span> <strong>Dashboard:</strong> Stat Cards & Donut Charts</div>
+          <div><span style="color:#f43f5e;">🔍</span> <strong>Threat Detection:</strong> Filterable Table & Export</div>
+          <div><span style="color:#a855f7;">📊</span> <strong>Analytics:</strong> Protocols & Data Summaries</div>
+          <div><span style="color:#10b981;">ℹ️</span> <strong>About:</strong> ML & Dataset Documentation</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <div class="footer-left"><span class="footer-status-dot"></span> Data Export & Analytics</div>
+      <div>Ready for Incident Response Triage and Compliance Reporting</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 10: FULL-STACK FASTAPI BACKEND -->
+<div class="slide">
+  <div class="slide-content-wrapper">
+    <div class="slide-header">
+      <div class="header-left">
+        <div class="category-tag">09. ENTERPRISE CAPABILITIES</div>
+        <div class="slide-title">Full-Stack FastAPI & Threat Intelligence</div>
+        <div class="slide-subtitle">Extending detection into an enterprise multi-tier architecture with REST APIs and database persistence</div>
+      </div>
+      <div class="slide-number-box">
+        <div class="slide-number">10</div>
+        <div class="slide-total">/ 12</div>
+      </div>
+    </div>
+
+    <div class="main-body">
+      <div class="grid-2">
+        <div class="cyber-card accent-blue">
+          <div class="card-title"><span class="card-icon">🚀</span> FastAPI Backend Architecture</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-cyan">High Performance API:</strong> Asynchronous REST endpoints powered by Uvicorn server (<code style="color:#38bdf8;">main.py</code> on port 8000).</li>
+            <li><strong class="highlight-cyan">Modular Routers:</strong>
+              <div style="margin-top:4px; font-family:'JetBrains Mono',monospace; font-size:13px; color:#cbd5e1;">
+                • <code style="color:#00d9ff;">/api/auth</code>: User login & JWT token issuance<br>
+                • <code style="color:#00d9ff;">/api/analyze</code>: Upload & automated log parsing<br>
+                • <code style="color:#00d9ff;">/api/dashboard</code>: Aggregated threat statistics<br>
+                • <code style="color:#00d9ff;">/api/reports</code>: Security report generation
+              </div>
+            </li>
+            <li><strong class="highlight-cyan">Database Persistence:</strong> SQLite database (<code style="color:#10b981;">cyber_threat_detector.db</code>) via SQLAlchemy ORM for threat records, users, and audit logs.</li>
+          </ul>
+        </div>
+
+        <div class="cyber-card accent-cyan">
+          <div class="card-title"><span class="card-icon">📄</span> Threat Intelligence & PDF Reports</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-cyan">Indicators of Compromise (IOC):</strong> Tracks malicious IP addresses, known hash signatures, and detection rules.</li>
+            <li><strong class="highlight-cyan">Automated PDF Security Reports:</strong>
+              <div style="font-size:14px; color:#94a3b8; margin-top:4px;">
+                Integrated <code style="color:#00d9ff;">pdf_generator.py</code> built with ReportLab creates professional C-level PDF security audit reports containing incident breakdowns and mitigation steps.
+              </div>
+            </li>
+            <li><strong class="highlight-cyan">Role-Based Access Control (RBAC):</strong> Authenticated administrator & security analyst roles secured with hashed passwords.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <div class="footer-left"><span class="footer-status-dot"></span> Enterprise Multi-Tier Architecture</div>
+      <div>Dual Interface: Streamlit SOC UI (8501) + FastAPI Production Server (8000)</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 11: SYSTEM TESTING & VALIDATION -->
+<div class="slide">
+  <div class="slide-content-wrapper">
+    <div class="slide-header">
+      <div class="header-left">
+        <div class="category-tag">10. VERIFICATION & RELIABILITY</div>
+        <div class="slide-title">Automated 10-Point Verification Test Suite</div>
+        <div class="slide-subtitle">Rigorous testing verifying 10 real-world deployment scenarios and edge-cases (test_system.py)</div>
+      </div>
+      <div class="slide-number-box">
+        <div class="slide-number">11</div>
+        <div class="slide-total">/ 12</div>
+      </div>
+    </div>
+
+    <div class="main-body">
+      <div class="grid-2">
+        <div class="cyber-card accent-green">
+          <div class="card-title"><span class="card-icon">✔</span> All 10 Test Cases Verified (100% Pass)</div>
+          <div style="display:flex; flex-direction:column; gap:8px; font-size:13px; font-family:'JetBrains Mono',monospace;">
+            <div style="color:#34d399;">[PASS] TEST 01: Application start with no CSV (standby state initialized)</div>
+            <div style="color:#34d399;">[PASS] TEST 02: Valid UNSW-NB15 CSV upload (sample_network_traffic.csv)</div>
+            <div style="color:#34d399;">[PASS] TEST 03: Different CSV upload (dynamic recalculation to new file)</div>
+            <div style="color:#34d399;">[PASS] TEST 04: Refresh Dashboard simulation (state & timestamp update)</div>
+            <div style="color:#34d399;">[PASS] TEST 05: CSV Export generation (cyber_threat_detection_results.csv)</div>
+            <div style="color:#34d399;">[PASS] TEST 06: Ground-truth label present (88.00% Accuracy + Confusion Matrix)</div>
+            <div style="color:#34d399;">[PASS] TEST 07: Unlabeled CSV upload (graceful Accuracy N/A display)</div>
+            <div style="color:#34d399;">[PASS] TEST 08: Missing model features (graceful error catch, zero crash)</div>
+            <div style="color:#34d399;">[PASS] TEST 09: Missing model file (graceful 'Model Unavailable' alert)</div>
+            <div style="color:#34d399;">[PASS] TEST 10: Sidebar navigation (Dashboard, Threats, Analytics, About)</div>
+          </div>
+        </div>
+
+        <div class="cyber-card accent-cyan">
+          <div class="card-title"><span class="card-icon">🛡️</span> Robustness & Fault Tolerance</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-cyan">Zero Hardcoded Falsehoods:</strong> All assertions verify that metrics and donut counts correspond to real model inferences.</li>
+            <li><strong class="highlight-cyan">Graceful Missing Feature Handling:</strong> If an uploaded CSV is missing columns like <code style="color:#f43f5e;">['dur', 'spkts', 'sbytes']</code>, the system catches it and highlights missing columns without throwing a 500 error.</li>
+            <li><strong class="highlight-cyan">Memory Efficient:</strong> Rapid batch processing of 500 records in 0.05 seconds with negligible memory footprint.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <div class="footer-left"><span class="footer-status-dot"></span> Quality Assurance</div>
+      <div>10 / 10 Tests Automated in test_system.py • 100% Reliable Deployment</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 12: CONCLUSION & FUTURE SCOPE -->
+<div class="slide">
+  <div class="slide-content-wrapper">
+    <div class="slide-header">
+      <div class="header-left">
+        <div class="category-tag">11. SUMMARY & ROADMAP</div>
+        <div class="slide-title">Conclusion & Future Enhancements</div>
+        <div class="slide-subtitle">Summary of project outcomes, real-world utility, and planned technology extensions</div>
+      </div>
+      <div class="slide-number-box">
+        <div class="slide-number">12</div>
+        <div class="slide-total">/ 12</div>
+      </div>
+    </div>
+
+    <div class="main-body">
+      <div class="grid-2">
+        <div class="cyber-card accent-green">
+          <div class="card-title"><span class="card-icon">🏆</span> Key Project Achievements</div>
+          <ul class="cyber-list green">
+            <li><strong>Production-Grade ML Pipeline:</strong> Built with Scikit-learn, Random Forest (100 trees), and ColumnTransformer on the UNSW-NB15 benchmark.</li>
+            <li><strong>Dual Deployment Modes:</strong> Intuitive Streamlit SOC interface for immediate data exploration + FastAPI backend for enterprise integration.</li>
+            <li><strong>Automated Forensic Workflow:</strong> Real-time threat classification, probabilistic confidence ratings, filterable results, and one-click CSV export.</li>
+            <li><strong>Battle-Tested Reliability:</strong> Verified against 10 critical operational test cases with zero-crash error handling.</li>
+          </ul>
+        </div>
+
+        <div class="cyber-card accent-purple">
+          <div class="card-title"><span class="card-icon">🚀</span> Future Enhancements</div>
+          <ul class="cyber-list">
+            <li><strong class="highlight-purple">Live Packet Capture (Scapy / PCAP):</strong> Direct interface with network interface cards (NIC) for real-time live sniffing.</li>
+            <li><strong class="highlight-purple">Deep Learning Ensembles:</strong> Integrating LSTM or Temporal Convolutional Networks (TCN) to detect sequential multi-stage cyber attack patterns.</li>
+            <li><strong class="highlight-purple">Automated Active Response:</strong> Automatically pushing firewall rule updates (iptables/Windows Firewall) to drop malicious source IPs on detection.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="margin-top:20px; text-align:center; padding:18px; background:rgba(15,23,42,0.9); border:1px solid rgba(56,189,248,0.25); border-radius:12px;">
+        <div style="font-size:22px; font-weight:800; color:#ffffff; letter-spacing:0.5px;">
+          Thank You! Any Questions?
+        </div>
+        <div style="font-size:14px; color:#94a3b8; font-family:'JetBrains Mono',monospace; margin-top:4px;">
+          Cyber Threat Detection System • Pair Programming Presentation
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <div class="footer-left"><span class="footer-status-dot"></span> End of Presentation</div>
+      <div>AI-Powered Cyber Threat Detection Platform</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

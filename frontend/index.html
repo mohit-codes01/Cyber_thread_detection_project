@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cyber Threat Detector — SOC Security Operations Dashboard</title>
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="/static/css/main.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <link rel="stylesheet" href="/static/css/responsive.css">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="app-container">
+  
+  <!-- Mobile Sidebar Backdrop -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <!-- LEFT SIDEBAR -->
+  <aside class="app-sidebar" id="appSidebar">
+    
+    <div class="sidebar-brand">
+      <div class="brand-icon-shield">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="M9 12l2 2 4-4"/>
+        </svg>
+      </div>
+      <div class="brand-text-block">
+        <span class="brand-title">ThreatDetector</span>
+        <span class="brand-tag">SOC Intelligence</span>
+      </div>
+    </div>
+
+    <!-- Navigation List -->
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Operations</div>
+      
+      <a class="nav-item active" data-tab="dashboard">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="9"></rect>
+          <rect x="14" y="3" width="7" height="5"></rect>
+          <rect x="14" y="12" width="7" height="9"></rect>
+          <rect x="3" y="16" width="7" height="5"></rect>
+        </svg>
+        <span>Dashboard</span>
+      </a>
+
+      <a class="nav-item" data-tab="monitoring">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+        </svg>
+        <span>Live Monitoring</span>
+      </a>
+
+      <a class="nav-item" data-tab="upload">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <span>Upload Data</span>
+      </a>
+
+      <div class="nav-section-title">Forensics</div>
+
+      <a class="nav-item" data-tab="analysis">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          <path d="M11 8v6"></path>
+          <path d="M8 11h6"></path>
+        </svg>
+        <span>Threat Analysis</span>
+      </a>
+
+      <a class="nav-item" data-tab="reports">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        <span>Reports</span>
+      </a>
+
+      <a class="nav-item" data-tab="settings">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        <span>Settings</span>
+      </a>
+    </nav>
+
+    <!-- Sidebar Bottom Brand Card -->
+    <div class="sidebar-footer">
+      <div class="footer-shield-badge">
+        <svg class="badge-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <span class="badge-title">Protecting Your Network</span>
+      </div>
+      <div class="footer-subtitle">Detect • Analyze • Secure</div>
+      <span class="footer-version">v1.0.0 • SOC SIEM</span>
+    </div>
+
+  </aside>
+
+  <!-- MAIN WRAPPER -->
+  <div class="main-wrapper">
+    
+    <!-- APPLICATION TOP HEADER -->
+    <header class="app-header">
+      <div class="header-left">
+        <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Toggle Navigation">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+
+        <div class="header-title-group">
+          <h1>Cyber Threat <span class="accent-text">Detector</span></h1>
+          <div class="header-subtitle">AI-Powered Network Security & Threat Analysis</div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- Live System Online Badge -->
+        <div class="pulse-badge">
+          <span class="pulse-dot"></span>
+          <span>System Online</span>
+        </div>
+
+        <!-- Notification Center Icon -->
+        <div style="position: relative;">
+          <button class="header-btn" id="headerNotificationBtn" title="Security Alerts & Notifications" style="padding: 8px 10px; position: relative;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span id="notifBadgeCount" style="position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; font-size: 0.65rem; font-weight: 700; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 6px #ef4444;">0</span>
+          </button>
+          
+          <!-- Notification Dropdown -->
+          <div id="notifDropdown" style="display: none; position: absolute; right: 0; top: 44px; width: 320px; background: var(--bg-card); border: 1px solid var(--border-active); border-radius: var(--radius-md); box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 100; padding: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 8px; margin-bottom: 8px;">
+              <span style="font-size: 0.82rem; font-weight: 700; color: #fff;">Recent Security Alerts</span>
+              <span style="font-size: 0.72rem; color: var(--cyan-primary); cursor: pointer; text-decoration: underline;" onclick="window.navigateToTab('analysis')">View All</span>
+            </div>
+            <div id="notifDropdownList" style="max-height: 220px; overflow-y: auto; font-size: 0.78rem; display: flex; flex-direction: column; gap: 8px;">
+              <div style="color: var(--text-muted); text-align: center; padding: 12px;">No unread security alerts</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1-Click Load Demo Data Trigger -->
+        <button class="header-btn" id="headerDemoBtn" title="Inject synthetic cybersecurity events to populate the SOC dashboard">
+          <span class="btn-icon">🧪</span>
+          <span>Load Demo Data</span>
+        </button>
+
+        <!-- User Profile Section -->
+        <div class="header-user-profile">
+          <div class="user-avatar">AD</div>
+          <div class="user-info">
+            <span class="user-name">Administrator</span>
+            <span class="user-role">SOC Lead</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTENT BODY -->
+    <main class="content-body">
+
+      <!-- ==========================================
+           VIEW 1: DASHBOARD (MAIN HUB)
+           ========================================== -->
+      <section class="view-section active" id="view-dashboard">
+        
+        <!-- DASHBOARD HERO SECTION -->
+        <div class="hero-card">
+          <div class="hero-left">
+            <div class="hero-shield-art">
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="M12 8v4"/>
+                <path d="M12 16h.01"/>
+              </svg>
+            </div>
+            <div class="hero-text-block">
+              <div class="hero-welcome-badge">
+                <span>●</span> Welcome, Administrator
+              </div>
+              <h2 class="hero-title">Cyber Threat Detection System</h2>
+              <p class="hero-desc">
+                Monitor your network traffic, detect malicious patterns,
+                and stay one step ahead with AI-powered threat intelligence.
+              </p>
+            </div>
+          </div>
+
+          <!-- Hero Right Telemetry Indicator -->
+          <div class="hero-live-telemetry">
+            <div class="telemetry-beacon"></div>
+            <div class="telemetry-info">
+              <span class="telemetry-title">Real-time Monitoring</span>
+              <span class="telemetry-status-text">Analyzing network traffic...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 IMPORTANT KPI METRIC CARDS -->
+        <div class="kpi-grid">
+          
+          <!-- Card 1: Total Packets Analyzed -->
+          <div class="kpi-card card-packets">
+            <div class="kpi-header">
+              <span class="kpi-title">Total Packets Analyzed</span>
+              <div class="kpi-icon-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                </svg>
+              </div>
+            </div>
+            <div class="kpi-value-wrap">
+              <span class="kpi-value" id="kpiTotalPackets">0</span>
+            </div>
+            <div class="kpi-footer">
+              <span>Verified Ingested Flows</span>
+              <span class="kpi-badge badge-blue">Telemetry</span>
+            </div>
+          </div>
+
+          <!-- Card 2: Threats Detected -->
+          <div class="kpi-card card-threats">
+            <div class="kpi-header">
+              <span class="kpi-title">Threats Detected</span>
+              <div class="kpi-icon-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+              </div>
+            </div>
+            <div class="kpi-value-wrap">
+              <span class="kpi-value" id="kpiThreatsDetected">0</span>
+            </div>
+            <div class="kpi-footer">
+              <span>Malicious Patterns Flagged</span>
+              <span class="kpi-badge badge-red" id="kpiCritBadge">0 Critical</span>
+            </div>
+          </div>
+
+          <!-- Card 3: Safe Traffic -->
+          <div class="kpi-card card-safe">
+            <div class="kpi-header">
+              <span class="kpi-title">Safe Traffic</span>
+              <div class="kpi-icon-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              </div>
+            </div>
+            <div class="kpi-value-wrap">
+              <span class="kpi-value" id="kpiSafeTraffic">0</span>
+            </div>
+            <div class="kpi-footer">
+              <span>Legitimate Network Flows</span>
+              <span class="kpi-badge badge-green">Baseline Safe</span>
+            </div>
+          </div>
+
+          <!-- Card 4: Detection Accuracy -->
+          <div class="kpi-card card-accuracy">
+            <div class="kpi-header">
+              <span class="kpi-title">Detection Accuracy</span>
+              <div class="kpi-icon-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2v20"></path>
+                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+              </div>
+            </div>
+            <div class="kpi-value-wrap">
+              <span class="kpi-value" id="kpiAccuracy">96.8%</span>
+            </div>
+            <div class="kpi-footer">
+              <span>UNSW-NB15 ML Model</span>
+              <span class="kpi-badge badge-purple">Random Forest</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- CHARTS SECTION: NETWORK TRAFFIC + THREAT TYPES -->
+        <div class="charts-grid">
+          
+          <!-- Chart 1: Network Traffic Overview -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <div class="chart-title-group">
+                <h3>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--cyan-primary)" stroke-width="2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                  </svg>
+                  Network Traffic Overview
+                </h3>
+                <div class="chart-subtitle">Real-time volume analysis (Normal vs Threat Trends)</div>
+              </div>
+
+              <div class="chart-legend-wrap">
+                <div class="legend-item">
+                  <span class="legend-color" style="background: #00f0ff;"></span>
+                  <span>Normal Traffic</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-color" style="background: #ef4444;"></span>
+                  <span>Threats</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="chart-canvas-container">
+              <canvas id="trafficOverviewChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart 2: Threat Types Distribution -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <div class="chart-title-group">
+                <h3>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--cyan-primary)" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                  </svg>
+                  Threat Types
+                </h3>
+                <div class="chart-subtitle">Classified Attack Category Breakdown</div>
+              </div>
+            </div>
+
+            <div class="chart-canvas-container" style="min-height: 180px;">
+              <canvas id="threatTypesChart"></canvas>
+            </div>
+
+            <!-- Dynamic Donut Legend Breakdown -->
+            <div class="donut-legend-list" id="donutLegendBreakdown">
+              <!-- Dynamically populated from actual categories -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RECENT THREAT ALERTS TABLE -->
+        <div class="alerts-card">
+          <div class="alerts-header">
+            <div class="alerts-title">
+              <h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                Recent Threat Alerts
+              </h3>
+            </div>
+
+            <a class="view-all-link" onclick="window.navigateToTab('analysis')">
+              <span>View All Threats</span>
+              <span>→</span>
+            </a>
+          </div>
+
+          <div class="table-responsive">
+            <table class="soc-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Source IP</th>
+                  <th>Threat Type</th>
+                  <th>Severity</th>
+                  <th>Confidence</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="recentAlertsTableBody">
+                <tr>
+                  <td colspan="6" style="text-align: center; padding: 24px; color: var(--text-muted);">
+                    Loading recent network security telemetry...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- QUICK ACTIONS BAR -->
+        <div class="quick-actions-card">
+          <h3>Quick SOC Actions</h3>
+          <div class="quick-actions-grid">
+            <button class="action-btn" id="qaUploadBtn">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <span>Upload CSV / Dataset</span>
+            </button>
+
+            <button class="action-btn" id="qaRunAnalysisBtn">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              </svg>
+              <span>Run Instant Analysis</span>
+            </button>
+
+            <button class="action-btn" id="qaViewReportsBtn">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+              <span>View Reports</span>
+            </button>
+
+            <button class="action-btn" id="qaDownloadPdfBtn">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Download PDF Report</span>
+            </button>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ==========================================
+           VIEW 2: LIVE MONITORING
+           ========================================== -->
+      <section class="view-section" id="view-monitoring">
+        <div class="hero-card" style="margin-bottom: 20px;">
+          <div class="hero-left">
+            <div class="hero-shield-art" style="background: rgba(16, 185, 129, 0.15); border-color: #10b981;">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+              </svg>
+            </div>
+            <div class="hero-text-block">
+              <div class="hero-welcome-badge" style="color: #34d399;">
+                <span>●</span> Live Telemetry
+              </div>
+              <h2 class="hero-title">Dataset Monitoring & Live Telemetry</h2>
+              <p class="hero-desc">
+                Continuous telemetry analysis stream, system health telemetry,
+                and machine learning inference pipeline status.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Telemetry Gauges -->
+        <div class="telemetry-grid">
+          <div class="gauge-card">
+            <div class="gauge-title">CPU Utilization</div>
+            <div class="gauge-value" id="gaugeCpuVal">12%</div>
+            <span class="kpi-badge badge-blue">psutil host telemetry</span>
+          </div>
+
+          <div class="gauge-card">
+            <div class="gauge-title">RAM Utilization</div>
+            <div class="gauge-value" id="gaugeRamVal">45%</div>
+            <span class="kpi-badge badge-blue" id="gaugeRamMb">4,200 MB</span>
+          </div>
+
+          <div class="gauge-card">
+            <div class="gauge-title">ML Inference Engine</div>
+            <div class="gauge-value" id="gaugeEngineVal" style="color: #34d399;">ONLINE</div>
+            <span class="kpi-badge badge-green">Random Forest + Isolation</span>
+          </div>
+
+          <div class="gauge-card">
+            <div class="gauge-title">Database Status</div>
+            <div class="gauge-value" id="gaugeDbVal" style="color: #38bdf8;">CONNECTED</div>
+            <span class="kpi-badge badge-blue">SQLite Local Store</span>
+          </div>
+        </div>
+
+        <!-- Terminal Stream Box -->
+        <div class="alerts-card">
+          <div class="alerts-header">
+            <div class="alerts-title">
+              <h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="4 17 10 11 4 5"></polyline>
+                  <line x1="12" y1="19" x2="20" y2="19"></line>
+                </svg>
+                Real-Time Security Event Ledger
+              </h3>
+            </div>
+          </div>
+          <div class="terminal-box" id="monitoringTerminalBox">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           VIEW 3: UPLOAD DATA
+           ========================================== -->
+      <section class="view-section" id="view-upload">
+        <div class="upload-card">
+          <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; color: #fff;">
+            Ingest & Analyze Network Traffic Data
+          </h2>
+          <p style="font-size: 0.86rem; color: var(--text-secondary); margin-bottom: 24px;">
+            Upload captured CSV network flow records, JSON telemetry, or system logs.
+            The pipeline automatically performs feature normalization and executes the ML detection engine.
+          </p>
+
+          <!-- Drag and Drop Dropzone -->
+          <div class="dropzone-area" id="dropzoneArea">
+            <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <div class="dropzone-title">Drag & Drop Network Traffic Dataset Here</div>
+            <div class="dropzone-sub">Supported formats: CSV, JSON, LOG, TXT (Maximum file size: 1GB)</div>
+            
+            <input type="file" id="csvFileInput" accept=".csv,.json,.log,.txt" style="display: none;">
+            <button class="btn-cyber-primary" id="browseFilesBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <span>Browse Files</span>
+            </button>
+          </div>
+
+          <!-- 1-Click Instant Sample Dataset Loader -->
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span style="font-size: 0.8rem; color: var(--text-muted); margin-right: 12px;">Don't have a file ready?</span>
+            <button class="btn-cyber-secondary" id="loadSampleDatasetBtn">
+              <span class="btn-icon">⚡</span>
+              <span>Load Sample UNSW-NB15 Dataset (500 records)</span>
+            </button>
+          </div>
+
+          <!-- Upload Progress Indicator -->
+          <div id="uploadProgressContainer" style="display: none; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 6px;">
+              <span>Ingesting file into quarantine storage...</span>
+              <span id="uploadProgressText">Uploading...</span>
+            </div>
+            <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
+              <div id="uploadProgressBar" style="width: 0%; height: 100%; background: var(--cyan-primary); transition: width 0.3s ease;"></div>
+            </div>
+          </div>
+
+          <!-- File Details Card (Visible after selection) -->
+          <div id="fileDetailsCard" style="display: none; background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 14px 18px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <span style="font-weight: 700; color: #fff;" id="uploadedFileName">dataset.csv</span>
+                <span style="font-size: 0.78rem; color: var(--text-muted); margin-left: 8px;" id="uploadedFileSize">0 KB</span>
+              </div>
+              <span class="pulse-badge" style="padding: 2px 10px; font-size: 0.72rem;">Validated</span>
+            </div>
+          </div>
+
+          <!-- Data Quality Assessment Panel -->
+          <div class="quality-assessment-panel" id="qualityAssessmentPanel" style="display: none;">
+            <div style="font-size: 0.85rem; font-weight: 700; color: var(--cyan-primary); margin-bottom: 4px;">
+              Pre-Analysis Schema Inspection
+            </div>
+            <div class="quality-grid">
+              <div class="quality-metric">
+                <div class="quality-metric-title">Total Records</div>
+                <div class="quality-metric-val" id="qualityRecordCount">0</div>
+              </div>
+              <div class="quality-metric">
+                <div class="quality-metric-title">Detected Columns</div>
+                <div class="quality-metric-val" id="qualityColumnCount">0</div>
+              </div>
+              <div class="quality-metric">
+                <div class="quality-metric-title">Quality Index</div>
+                <div class="quality-metric-val" id="qualityScoreVal">100%</div>
+              </div>
+              <div class="quality-metric">
+                <div class="quality-metric-title">Security Features</div>
+                <div class="quality-metric-val" id="qualityDetectedCols" style="font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions Bar -->
+          <div class="upload-actions-bar">
+            <button class="btn-cyber-secondary" id="clearUploadBtn">Clear</button>
+            <button class="btn-cyber-primary" id="startAnalysisBtn" disabled>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              </svg>
+              <span>Analyze Dataset</span>
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ==========================================
+           VIEW 4: THREAT ANALYSIS (FORENSICS)
+           ========================================== -->
+      <section class="view-section" id="view-analysis">
+        <div class="alerts-card">
+          <div class="alerts-header" style="flex-wrap: wrap; gap: 16px;">
+            <div class="alerts-title">
+              <h3>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--cyan-primary)" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                Threat Forensics & Security Drill-Down
+              </h3>
+              <div class="chart-subtitle" id="filteredThreatCount">Showing active flagged threats</div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span class="kpi-badge badge-red"><b id="analysisCritCount">0</b> Critical</span>
+              <span class="kpi-badge" style="background: rgba(249,115,22,0.15); color: #f97316;"><b id="analysisHighCount">0</b> High</span>
+              <span class="kpi-badge" style="background: rgba(245,158,11,0.15); color: #f59e0b;"><b id="analysisMedCount">0</b> Medium</span>
+            </div>
+          </div>
+
+          <!-- Filter Controls Bar -->
+          <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+            <input type="text" id="threatSearchInput" placeholder="Search by IP, domain, username, or rule..." 
+                   style="background: var(--bg-input); border: 1px solid var(--border-subtle); color: #fff; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.84rem;">
+
+            <select id="threatSeverityFilter" style="background: var(--bg-input); border: 1px solid var(--border-subtle); color: #fff; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.84rem;">
+              <option value="">All Severities</option>
+              <option value="CRITICAL">Critical</option>
+              <option value="HIGH">High</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
+            </select>
+
+            <select id="threatTypeFilter" style="background: var(--bg-input); border: 1px solid var(--border-subtle); color: #fff; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.84rem;">
+              <option value="">All Threat Types</option>
+            </select>
+
+            <select id="threatStatusFilter" style="background: var(--bg-input); border: 1px solid var(--border-subtle); color: #fff; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.84rem;">
+              <option value="">All Statuses</option>
+              <option value="OPEN">Open</option>
+              <option value="INVESTIGATING">Investigating</option>
+              <option value="RESOLVED">Resolved</option>
+              <option value="FALSE_POSITIVE">False Positive</option>
+            </select>
+          </div>
+
+          <!-- Forensic Table -->
+          <div class="table-responsive">
+            <table class="soc-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Timestamp</th>
+                  <th>Threat Type</th>
+                  <th>Severity</th>
+                  <th>Risk Score</th>
+                  <th>Entity / IP</th>
+                  <th>Engine</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="threatsTableBody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           VIEW 5: REPORTS
+           ========================================== -->
+      <section class="view-section" id="view-reports">
+        
+        <!-- Posture Summary Card -->
+        <div class="hero-card" style="margin-bottom: 24px;">
+          <div class="hero-left">
+            <div class="hero-shield-art" style="border-color: #a855f7;">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+            </div>
+            <div class="hero-text-block">
+              <div class="hero-welcome-badge" style="color: #c084fc;">Executive Audit</div>
+              <h2 class="hero-title">Security Health & Reports</h2>
+              <p class="hero-desc">
+                Generate audit-ready cybersecurity compliance reports in PDF, CSV, or JSON format
+                backed by ReportLab formatting and multi-signal risk evaluations.
+              </p>
+            </div>
+          </div>
+
+          <div style="text-align: right;">
+            <div style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase;">Security Posture Score</div>
+            <div style="font-size: 2.2rem; font-weight: 800; color: #fff; font-family: var(--font-mono);" id="reportsScoreVal">95.0/100</div>
+            <span class="kpi-badge badge-green" id="reportsGradeVal">A (Optimal)</span>
+          </div>
+        </div>
+
+        <!-- Risk Category Breakdown -->
+        <div class="alerts-card" style="margin-bottom: 24px;">
+          <h3 style="font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 14px;">Risk Vector Assessment</h3>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 4px;">
+                <span style="color: var(--text-secondary);">Authentication Vector (Brute force & stuffing)</span>
+                <span style="color: #fff; font-family: var(--font-mono);" id="authRiskBarText">5%</span>
+              </div>
+              <div class="score-bar-bg" style="width: 100%; height: 8px;">
+                <div class="score-bar-fill" id="authRiskBar" style="width: 5%; background: #0ea5e9;"></div>
+              </div>
+            </div>
+
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 4px;">
+                <span style="color: var(--text-secondary);">Network Perimeter Vector (Port scans & exfiltration)</span>
+                <span style="color: #fff; font-family: var(--font-mono);" id="netRiskBarText">5%</span>
+              </div>
+              <div class="score-bar-bg" style="width: 100%; height: 8px;">
+                <div class="score-bar-fill" id="netRiskBar" style="width: 5%; background: #f59e0b;"></div>
+              </div>
+            </div>
+
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 4px;">
+                <span style="color: var(--text-secondary);">Threat Intel & DGA Vector</span>
+                <span style="color: #fff; font-family: var(--font-mono);" id="indRiskBarText">0%</span>
+              </div>
+              <div class="score-bar-bg" style="width: 100%; height: 8px;">
+                <div class="score-bar-fill" id="indRiskBar" style="width: 0%; background: #ef4444;"></div>
+              </div>
+            </div>
+
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 4px;">
+                <span style="color: var(--text-secondary);">Behavioral Statistical Outliers (Isolation Forest)</span>
+                <span style="color: #fff; font-family: var(--font-mono);" id="behRiskBarText">5%</span>
+              </div>
+              <div class="score-bar-bg" style="width: 100%; height: 8px;">
+                <div class="score-bar-fill" id="behRiskBar" style="width: 5%; background: #a855f7;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1-Click Generate Actions -->
+        <div class="quick-actions-card" style="margin-bottom: 24px;">
+          <h3>Export Analysis Reports</h3>
+          <div class="quick-actions-grid" style="grid-template-columns: repeat(3, 1fr);">
+            <button class="action-btn" id="generatePdfReportBtn">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+              <span>Download Executive PDF Report</span>
+            </button>
+
+            <button class="action-btn" id="generateCsvReportBtn">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+              </svg>
+              <span>Export CSV Forensic Ledger</span>
+            </button>
+
+            <button class="action-btn" id="generateJsonReportBtn">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 18l6-6-6-6"></path>
+                <path d="M8 6l-6 6 6 6"></path>
+              </svg>
+              <span>Export Raw JSON Report</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Reports Archive Table -->
+        <div class="alerts-card">
+          <div class="alerts-header">
+            <div class="alerts-title">
+              <h3>Generated Security Reports Archive</h3>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="soc-table">
+              <thead>
+                <tr>
+                  <th>Report Title</th>
+                  <th>Format</th>
+                  <th>Generated</th>
+                  <th>File Size</th>
+                  <th>Threats</th>
+                  <th>Download</th>
+                </tr>
+              </thead>
+              <tbody id="reportsTableBody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ==========================================
+           VIEW 6: SETTINGS & MODEL INFO
+           ========================================== -->
+      <section class="view-section" id="view-settings">
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+          
+          <!-- Card: ML Architecture -->
+          <div class="alerts-card">
+            <h3 style="font-size: 1.1rem; color: #fff; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--cyan-primary)" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+              </svg>
+              Machine Learning Pipeline Specifications
+            </h3>
+            
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.84rem; color: var(--text-secondary);">
+              <div><b>Supervised Classifier:</b> Random Forest Classifier (100 trees, balanced weights)</div>
+              <div><b>Pipeline Integration:</b> Scikit-learn Pipeline with ColumnTransformer</div>
+              <div><b>Categorical Handling:</b> One-Hot Encoding (handle_unknown='ignore')</div>
+              <div><b>Numerical Imputation:</b> Median SimpleImputer + Standard Scaler</div>
+              <div><b>Anomaly Detector:</b> Unsupervised Isolation Forest (contamination=0.08)</div>
+              <div><b>Target Benchmark:</b> UNSW-NB15 Intrusion Dataset</div>
+              <div><b>Verified Test Accuracy:</b> <span style="color: var(--cyan-primary); font-weight: 700;">96.8%</span></div>
+            </div>
+          </div>
+
+          <!-- Card: Dataset Specs -->
+          <div class="alerts-card">
+            <h3 style="font-size: 1.1rem; color: #fff; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--cyan-primary)" stroke-width="2">
+                <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+              </svg>
+              Dataset & Threat Categories
+            </h3>
+
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.84rem; color: var(--text-secondary);">
+              <div><b>Primary Dataset:</b> UNSW-NB15 Network Intrusion Dataset</div>
+              <div><b>Training Records:</b> 175,341 records</div>
+              <div><b>Testing Records:</b> 82,332 records</div>
+              <div><b>Attack Classes:</b> Generic, Exploits, Fuzzers, DoS, Reconnaissance, Analysis, Backdoor, Shellcode, Worms</div>
+              <div><b>Normal Baseline:</b> Label 0 (Safe Traffic)</div>
+              <div><b>Threat Flag:</b> Label 1 (Malicious Attack Pattern)</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Detection Scoring Weights -->
+        <div class="alerts-card" style="margin-bottom: 24px;">
+          <h3 style="font-size: 1.05rem; color: #fff; margin-bottom: 12px;">Composite Risk Scoring Weights</h3>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; font-size: 0.82rem;">
+            <div class="quality-metric">
+              <div class="quality-metric-title">Deterministic Rule Weight</div>
+              <div class="quality-metric-val">35%</div>
+            </div>
+            <div class="quality-metric">
+              <div class="quality-metric-title">Isolation Forest Anomaly</div>
+              <div class="quality-metric-val">25%</div>
+            </div>
+            <div class="quality-metric">
+              <div class="quality-metric-title">Random Forest Classifier</div>
+              <div class="quality-metric-val">25%</div>
+            </div>
+            <div class="quality-metric">
+              <div class="quality-metric-title">Threat Intel Indicators</div>
+              <div class="quality-metric-val">15%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Maintenance Actions -->
+        <div class="alerts-card">
+          <h3 style="font-size: 1rem; color: #fff; margin-bottom: 12px;">Platform Maintenance</h3>
+          <div style="display: flex; gap: 14px;">
+            <button class="btn-cyber-secondary" id="seedDefaultUsersBtn">
+              Verify SOC Analyst & Admin Accounts
+            </button>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+
+</div>
+
+<!-- FORENSIC INVESTIGATION DRILL-DOWN MODAL -->
+<div class="modal-backdrop" id="forensicModalBackdrop">
+  <div class="modal-card">
+    
+    <div class="modal-header">
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <h3 style="font-size: 1.25rem; font-weight: 800; color: #fff;" id="modalThreatType">Threat Forensics</h3>
+          <div id="modalThreatSev"></div>
+        </div>
+        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;" id="modalThreatId">#0</div>
+      </div>
+      <button class="modal-close-btn" id="closeForensicModalBtn">✕</button>
+    </div>
+
+    <!-- Forensic Risk Composite Score Grid -->
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;">
+      <div class="quality-metric">
+        <div class="quality-metric-title">Composite Risk</div>
+        <div class="quality-metric-val" id="modalRiskScore">0.0</div>
+      </div>
+      <div class="quality-metric">
+        <div class="quality-metric-title">Rule Score</div>
+        <div class="quality-metric-val" id="modalRuleScore">0.0</div>
+      </div>
+      <div class="quality-metric">
+        <div class="quality-metric-title">Anomaly Score</div>
+        <div class="quality-metric-val" id="modalAnomalyScore">0.0</div>
+      </div>
+      <div class="quality-metric">
+        <div class="quality-metric-title">ML Classifier</div>
+        <div class="quality-metric-val" id="modalMlScore">0.0</div>
+      </div>
+    </div>
+
+    <!-- Forensic Details Block -->
+    <div class="forensic-section">
+      <div class="forensic-title">Entity Information</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.84rem;">
+        <div><b>Source Entity / IP:</b> <span class="ip-badge" id="modalSourceIp">-</span></div>
+        <div><b>Target / Gateway:</b> <span style="font-family: var(--font-mono); color: #fff;" id="modalDestIp">-</span></div>
+        <div><b>Detection Rule:</b> <span style="font-family: var(--font-mono); color: var(--cyan-primary);" id="modalRuleTriggered">-</span></div>
+      </div>
+    </div>
+
+    <div class="forensic-section">
+      <div class="forensic-title">Detection Rationale ("Why was this flagged?")</div>
+      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 12px; font-size: 0.85rem; color: #e2e8f0;" id="modalExplanation">
+        -
+      </div>
+    </div>
+
+    <div class="forensic-section">
+      <div class="forensic-title">Recommended Defensive Remediations</div>
+      <div style="background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.2); border-radius: 6px; padding: 12px; font-size: 0.85rem; color: #34d399;" id="modalRecommendations">
+        -
+      </div>
+    </div>
+
+    <div class="forensic-section">
+      <div class="forensic-title">Structured Forensic Evidence</div>
+      <pre class="evidence-box" id="modalEvidenceJson">{}</pre>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08);">
+      <button class="btn-cyber-secondary" onclick="document.getElementById('forensicModalBackdrop').classList.remove('active')">Close</button>
+      <button class="btn-cyber-primary" id="modalResolveBtn">Mark Threat as RESOLVED ✓</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- JavaScript Module Entry -->
+<script type="module" src="/static/js/app.js"></script>
+
+</body>
+</html>
