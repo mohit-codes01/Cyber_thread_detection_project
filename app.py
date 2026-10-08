@@ -2234,27 +2234,34 @@ if navigation == "🏠 Dashboard":
                 "BOTNET": ("#F368E0", "🤖"),
                 "DATA_EXFILTRATION": ("#FF5252", "📤")
             }
-            attack_badges_html = """
-            <div class="soc-card" style="margin-bottom:20px;">
-                <div class="soc-card-title">⚔️ THREAT TAXONOMY & ATTACK BREAKDOWN</div>
-                <div style="font-size:12px; color:#8FA8C0; margin-bottom:14px;">
-                    Distribution of specific cyber attack vectors classified by the multi-threat machine learning engine.
-                </div>
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px;">
-            """
+            badges_items = []
             for att_name, att_data in analysis["attack_breakdown"].items():
                 clr, ico = attack_colors.get(att_name, ("#00D9FF", "⚠️"))
                 cnt = att_data["count"]
                 pct = att_data["percentage"]
-                attack_badges_html += f"""
-                <div style="background:rgba(3,15,32,0.85); border:1px solid {clr}55; border-radius:10px; padding:12px 14px;">
-                    <div style="font-size:11px; font-weight:700; color:{clr}; letter-spacing:0.8px;">{ico} {att_name}</div>
-                    <div style="font-size:18px; font-weight:800; color:#FFFFFF; margin-top:4px; font-family:'JetBrains Mono', monospace;">{cnt:,}</div>
-                    <div style="font-size:11px; color:#8FA8C0; margin-top:2px;">{pct:.2f}% of traffic</div>
-                </div>
-                """
-            attack_badges_html += "</div></div>"
-            st.markdown(attack_badges_html, unsafe_allow_html=True)
+                badges_items.append(
+                    f'<div style="background:rgba(3,15,32,0.85); border:1px solid {clr}55; border-radius:10px; padding:12px 14px;">'
+                    f'<div style="font-size:11px; font-weight:700; color:{clr}; letter-spacing:0.8px;">{ico} {att_name}</div>'
+                    f'<div style="font-size:18px; font-weight:800; color:#FFFFFF; margin-top:4px; font-family:\'JetBrains Mono\', monospace;">{cnt:,}</div>'
+                    f'<div style="font-size:11px; color:#8FA8C0; margin-top:2px;">{pct:.2f}% of traffic</div>'
+                    f'</div>'
+                )
+            grid_html = "".join(badges_items)
+            attack_card_html = (
+                f'<div class="soc-card" style="margin-bottom:20px;">'
+                f'<div class="soc-card-title">⚔️ THREAT TAXONOMY & ATTACK BREAKDOWN</div>'
+                f'<div style="font-size:12px; color:#8FA8C0; margin-bottom:14px;">'
+                f'Distribution of specific cyber attack vectors classified by the multi-threat machine learning engine.'
+                f'</div>'
+                f'<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px;">'
+                f'{grid_html}'
+                f'</div>'
+                f'</div>'
+            )
+            if hasattr(st, "html"):
+                st.html(attack_card_html)
+            else:
+                st.markdown(attack_card_html, unsafe_allow_html=True)
 
         # Quick Results Preview Card
         st.markdown(
