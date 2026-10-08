@@ -4,6 +4,12 @@ Production-ready Streamlit Application
 Powered by Scikit-learn Random Forest Model on UNSW-NB15 Dataset
 """
 
+import io
+import json
+import csv
+import zipfile
+import tempfile
+import shutil
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
@@ -796,8 +802,320 @@ def run_model_inference(df_raw: pd.DataFrame, ml_pipeline):
     }, None
 
 # ==============================================================================
+# 5b. MULTI-FORMAT DATA LOADERS & UTILITIES
+# ==============================================================================
+SUPPORTED_TABULAR_EXTENSIONS = {".csv", ".xlsx", ".xls", ".json", ".txt", ".parquet"}
+
+def format_file_size(size_bytes: int) -> str:
+    """Formats raw file size in bytes to a human-readable string."""
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    elif size_bytes < 1024 * 1024:
+        return f"{size_bytes / 1024:.2f} KB"
+    elif size_bytes < 1024 * 1024 * 1024:
+        return f"{size_bytes / (1024 * 1024):.2f} MB"
+    else:
+        return f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
+
+def get_file_type_label(filename: str, is_inside_zip: bool = False) -> str:
+    """Returns a descriptive file type label for UI displays."""
+    ext = Path(filename).suffix.lower()
+    mapping = {
+        ".csv": "CSV (Comma-Separated Values)",
+        ".xlsx": "Excel Spreadsheet (.xlsx)",
+        ".xls": "Excel Spreadsheet (.xls)",
+        ".json": "JSON (JavaScript Object Notation)",
+        ".txt": "TXT (Delimited Network Traffic)",
+        ".parquet": "Parquet (Apache Parquet)",
+        ".zip": "ZIP Archive",
+    }
+    base = mapping.get(ext, f"{ext.upper().lstrip('.')} File" if ext else "Tabular Dataset")
+    if is_inside_zip:
+        return f"ZIP Archive ➔ {base}"
+    return base
+
+def read_json_dataset(file_or_buffer) -> pd.DataFrame:
+    """
+    Reads JSON datasets, supporting JSON records arrays, orient formats,
+    dictionary-wrapped records (e.g. {'data': [...]}), and newline-delimited JSON (JSON lines).
+    """
+    if hasattr(file_or_buffer, "seek"):
+        file_or_buffer.seek(0)
+        content = file_or_buffer.read()
+        if isinstance(content, bytes):
+            text = content.decode("utf-8", errors="replace")
+        else:
+            text = str(content)
+        file_or_buffer.seek(0)
+    elif isinstance(file_or_buffer, (str, Path)):
+        with open(file_or_buffer, "r", encoding="utf-8", errors="replace") as f:
+            text = f.read()
+    else:
+        text = str(file_or_buffer)
+
+    # 1. Parse JSON structure directly to detect list of records or wrapped dictionary
+    try:
+        data = json.loads(text)
+        if isinstance(data, list):
+            df = pd.json_normalize(data)
+            if not df.empty and df.shape[1] > 0:
+                df.columns = [str(c).strip() for c in df.columns]
+                return df
+        elif isinstance(data, dict):
+            # Check for wrapped record keys first (e.g. {"data": [...]}, {"records": [...]})
+            for key in ["records", "data", "rows", "items", "traffic", "events", "dataset", "results"]:
+                if key in data and isinstance(data[key], list) and len(data[key]) > 0:
+                    df = pd.json_normalize(data[key])
+                    if not df.empty and df.shape[1] > 0:
+                        df.columns = [str(c).strip() for c in df.columns]
+                        return df
+            # Try DataFrame from dictionary orientation
+            try:
+                df = pd.DataFrame.from_dict(data)
+                if not df.empty and df.shape[1] > 1 and not any(isinstance(val, (dict, list)) for val in df.iloc[0]):
+                    df.columns = [str(c).strip() for c in df.columns]
+                    return df
+            except Exception:
+                pass
+            df = pd.json_normalize(data)
+            if not df.empty and df.shape[1] > 0:
+                df.columns = [str(c).strip() for c in df.columns]
+                return df
+    except Exception:
+        pass
+
+    # 2. Try JSON lines (NDJSON)
+    try:
+        df = pd.read_json(io.StringIO(text), lines=True)
+        if isinstance(df, pd.DataFrame) and not df.empty and df.shape[1] > 0:
+            df.columns = [str(c).strip() for c in df.columns]
+            return df
+    except Exception:
+        pass
+
+    # 3. Standard pd.read_json fallback
+    try:
+        df = pd.read_json(io.StringIO(text))
+        if isinstance(df, pd.DataFrame) and not df.empty and df.shape[1] > 0:
+            df.columns = [str(c).strip() for c in df.columns]
+            return df
+    except Exception:
+        pass
+
+    raise ValueError("Unable to parse JSON file into a valid tabular DataFrame.")
+
+def read_tabular_txt(file_or_buffer) -> pd.DataFrame:
+    """
+    Attempts to detect whether a TXT file is comma-separated, tab-separated,
+    or whitespace-separated and convert it into a DataFrame if it contains
+    tabular network traffic data. If it cannot be converted, raises a clear error.
+    """
+    if hasattr(file_or_buffer, "seek"):
+        file_or_buffer.seek(0)
+        content = file_or_buffer.read()
+        if isinstance(content, bytes):
+            text = content.decode("utf-8", errors="replace")
+        else:
+            text = str(content)
+        file_or_buffer.seek(0)
+    elif isinstance(file_or_buffer, (str, Path)):
+        with open(file_or_buffer, "r", encoding="utf-8", errors="replace") as f:
+            text = f.read()
+    else:
+        text = str(file_or_buffer)
+
+    lines = [line for line in text.splitlines() if line.strip()]
+    if not lines:
+        raise ValueError("The uploaded TXT file is empty.")
+
+    has_comma = any(',' in line for line in lines[:5])
+    has_tab = any('\t' in line for line in lines[:5])
+    has_semi = any(';' in line for line in lines[:5])
+
+    candidate_delims = []
+    sample = "\n".join(lines[:30])
+    try:
+        dialect = csv.Sniffer().sniff(sample, delimiters=[',', '\t', ';'])
+        if dialect.delimiter:
+            candidate_delims.append(dialect.delimiter)
+    except Exception:
+        pass
+
+    if has_comma and ',' not in candidate_delims:
+        candidate_delims.append(',')
+    if has_tab and '\t' not in candidate_delims:
+        candidate_delims.append('\t')
+    if has_semi and ';' not in candidate_delims:
+        candidate_delims.append(';')
+    candidate_delims.append(r'\s+')
+
+    best_df = None
+    for sep in candidate_delims:
+        try:
+            if sep == r'\s+':
+                df = pd.read_csv(io.StringIO(text), sep=r'\s+', engine='python')
+            else:
+                df = pd.read_csv(io.StringIO(text), sep=sep)
+
+            if df is not None and df.shape[1] > 1 and df.shape[0] > 0:
+                has_net_col = any(col.lower() in ['proto', 'service', 'state', 'dur', 'spkts', 'sbytes', 'label', 'rate', 'sttl', 'dttl', 'id'] for col in df.columns)
+                non_empty_num = sum(1 for c in df.columns if pd.to_numeric(df[c], errors='coerce').notna().sum() >= max(1, len(df) * 0.5))
+                if has_net_col or non_empty_num > 0:
+                    best_df = df
+                    break
+        except Exception:
+            continue
+
+    if best_df is not None:
+        best_df.columns = [str(c).strip() for c in best_df.columns]
+        return best_df
+
+    raise ValueError(
+        "Unable to parse TXT file as tabular network traffic data. "
+        "Please ensure the file is comma-separated, tab-separated, or whitespace-separated."
+    )
+
+def load_dataset_from_file_or_buffer(file_or_buffer, filename: str) -> pd.DataFrame:
+    """
+    Parses an uploaded file or file buffer into a pandas DataFrame based on file extension.
+    Supports CSV, XLSX, XLS, JSON, TXT, and PARQUET.
+    """
+    ext = Path(filename).suffix.lower()
+
+    if ext == ".csv":
+        if hasattr(file_or_buffer, "seek"):
+            file_or_buffer.seek(0)
+        try:
+            df = pd.read_csv(file_or_buffer)
+        except UnicodeDecodeError:
+            if hasattr(file_or_buffer, "seek"):
+                file_or_buffer.seek(0)
+            df = pd.read_csv(file_or_buffer, encoding="latin-1")
+        if df is not None and not df.empty:
+            df.columns = [str(c).strip() for c in df.columns]
+        return df
+
+    elif ext in [".xlsx", ".xls"]:
+        if hasattr(file_or_buffer, "seek"):
+            file_or_buffer.seek(0)
+        engine = "openpyxl" if ext == ".xlsx" else "xlrd"
+        try:
+            df = pd.read_excel(file_or_buffer, sheet_name=0, engine=engine)
+        except Exception:
+            if hasattr(file_or_buffer, "seek"):
+                file_or_buffer.seek(0)
+            df = pd.read_excel(file_or_buffer, sheet_name=0)
+        if df is not None and not df.empty:
+            df.columns = [str(c).strip() for c in df.columns]
+        return df
+
+    elif ext == ".json":
+        return read_json_dataset(file_or_buffer)
+
+    elif ext == ".txt":
+        return read_tabular_txt(file_or_buffer)
+
+    elif ext == ".parquet":
+        if hasattr(file_or_buffer, "seek"):
+            file_or_buffer.seek(0)
+        df = pd.read_parquet(file_or_buffer)
+        if df is not None and not df.empty:
+            df.columns = [str(c).strip() for c in df.columns]
+        return df
+
+    else:
+        raise ValueError(
+            f"Unsupported file format '{ext}'. Supported formats: CSV, ZIP, XLSX, XLS, JSON, TXT, PARQUET."
+        )
+
+def inspect_zip_entries(zip_file_or_buffer):
+    """
+    Scans a ZIP archive and returns a list of candidate dataset file paths inside the archive.
+    Ignores macOS metadata, directories, and hidden files.
+    """
+    candidates = []
+    if hasattr(zip_file_or_buffer, "seek"):
+        zip_file_or_buffer.seek(0)
+    with zipfile.ZipFile(zip_file_or_buffer) as zf:
+        for info in zf.infolist():
+            if info.is_dir():
+                continue
+            norm_name = info.filename.replace("\\", "/")
+            if norm_name.startswith("__MACOSX/") or Path(norm_name).name.startswith("."):
+                continue
+            ext = Path(norm_name).suffix.lower()
+            if ext in SUPPORTED_TABULAR_EXTENSIONS:
+                candidates.append(info.filename)
+    return candidates
+
+def load_zip_dataset(uploaded_file, selected_entry: str) -> pd.DataFrame:
+    """
+    Temporarily extracts the selected dataset from the uploaded ZIP file,
+    reads it into a DataFrame, and immediately cleans up the temporary extraction directory.
+    """
+    if hasattr(uploaded_file, "seek"):
+        uploaded_file.seek(0)
+    with tempfile.TemporaryDirectory(prefix="soc_zip_") as temp_dir:
+        temp_dir_path = Path(temp_dir)
+        with zipfile.ZipFile(uploaded_file) as zf:
+            zf.extract(selected_entry, path=temp_dir_path)
+
+        extracted_file_path = temp_dir_path / selected_entry
+        if not extracted_file_path.exists():
+            raise FileNotFoundError(f"Extracted dataset '{selected_entry}' could not be found.")
+
+        df = load_dataset_from_file_or_buffer(extracted_file_path, filename=selected_entry)
+        return df
+
+def render_file_information_section(analysis_dict):
+    """
+    Renders the File Information section showing File Name, File Type,
+    File Size, Number of Rows, and Number of Columns.
+    """
+    file_name = analysis_dict.get("file_name", "Unknown")
+    file_type = analysis_dict.get("file_type", "Dataset")
+    file_size = analysis_dict.get("file_size_formatted", "--")
+    num_rows = analysis_dict.get("num_rows", analysis_dict.get("total_records", 0))
+    raw_df = analysis_dict.get("raw_df")
+    num_cols = analysis_dict.get("num_cols", len(raw_df.columns) if raw_df is not None else 0)
+
+    st.markdown('<div class="section-header">📁 FILE INFORMATION</div>', unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div class="soc-card" style="margin-bottom:20px; padding:18px 22px;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px;">
+                <div style="background:rgba(3,15,32,0.7); border:1px solid rgba(8,120,209,0.3); border-radius:10px; padding:12px 14px;">
+                    <div style="font-size:11px; font-weight:700; color:#8FA8C0; letter-spacing:1px;">FILE NAME</div>
+                    <div style="font-size:13px; font-weight:700; color:#00D9FF; margin-top:5px; word-break:break-all; font-family:'JetBrains Mono', monospace;" title="{file_name}">{file_name}</div>
+                </div>
+                <div style="background:rgba(3,15,32,0.7); border:1px solid rgba(8,120,209,0.3); border-radius:10px; padding:12px 14px;">
+                    <div style="font-size:11px; font-weight:700; color:#8FA8C0; letter-spacing:1px;">FILE TYPE</div>
+                    <div style="font-size:13px; font-weight:700; color:#EAF4FF; margin-top:5px;">{file_type}</div>
+                </div>
+                <div style="background:rgba(3,15,32,0.7); border:1px solid rgba(8,120,209,0.3); border-radius:10px; padding:12px 14px;">
+                    <div style="font-size:11px; font-weight:700; color:#8FA8C0; letter-spacing:1px;">FILE SIZE</div>
+                    <div style="font-size:13px; font-weight:700; color:#EAF4FF; margin-top:5px; font-family:'JetBrains Mono', monospace;">{file_size}</div>
+                </div>
+                <div style="background:rgba(3,15,32,0.7); border:1px solid rgba(8,120,209,0.3); border-radius:10px; padding:12px 14px;">
+                    <div style="font-size:11px; font-weight:700; color:#8FA8C0; letter-spacing:1px;">NUMBER OF ROWS</div>
+                    <div style="font-size:16px; font-weight:800; color:#00E6A0; margin-top:5px; font-family:'JetBrains Mono', monospace;">{num_rows:,}</div>
+                </div>
+                <div style="background:rgba(3,15,32,0.7); border:1px solid rgba(8,120,209,0.3); border-radius:10px; padding:12px 14px;">
+                    <div style="font-size:11px; font-weight:700; color:#8FA8C0; letter-spacing:1px;">NUMBER OF COLUMNS</div>
+                    <div style="font-size:16px; font-weight:800; color:#FF9F43; margin-top:5px; font-family:'JetBrains Mono', monospace;">{num_cols:,}</div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+# ==============================================================================
 # 6. SESSION STATE MANAGEMENT
 # ==============================================================================
+if "active_file_key" not in st.session_state:
+    st.session_state.active_file_key = None
+
 if "active_file_name" not in st.session_state:
     st.session_state.active_file_name = None
 
@@ -834,23 +1152,55 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
-    # CSV Upload Section
+    # Data Upload Section
     st.markdown(
-        '<div style="font-size:13px; font-weight:600; color:#EAF4FF; margin-bottom:6px;">Upload Network Traffic CSV</div>',
+        '<div style="font-size:13px; font-weight:600; color:#EAF4FF; margin-bottom:6px;">Upload Network Traffic Data</div>',
         unsafe_allow_html=True
     )
 
     uploaded_file = st.file_uploader(
         "Drag and drop file here",
-        type=["csv"],
-        help="Upload UNSW-NB15 network traffic CSV dataset (up to 1GB).",
+        type=["csv", "zip", "xlsx", "xls", "json", "txt", "parquet"],
+        help="Upload network traffic dataset in CSV, ZIP, XLSX, XLS, JSON, TXT, or PARQUET format (up to 1GB).",
         label_visibility="collapsed"
     )
 
     st.markdown(
-        '<div style="font-size:11px; color:#8FA8C0; margin-top:2px; margin-bottom:18px;">Limit 1GB per file • CSV</div>',
+        '<div style="font-size:11px; color:#8FA8C0; margin-top:2px; margin-bottom:12px;">Limit 1GB per file • CSV, ZIP, XLSX, XLS, JSON, TXT, PARQUET</div>',
         unsafe_allow_html=True
     )
+
+    selected_zip_entry = None
+    if uploaded_file is not None and uploaded_file.name.lower().endswith(".zip"):
+        try:
+            zip_candidates = inspect_zip_entries(uploaded_file)
+            if not zip_candidates:
+                st.markdown(
+                    """
+                    <div style="background:rgba(255,59,107,0.12); border:1px solid #FF3B6B; border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:12px; color:#FF3B6B;">
+                        ⚠️ <b>No datasets found:</b> The ZIP archive does not contain any CSV, XLSX, XLS, JSON, TXT, or PARQUET files.
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    f"""
+                    <div style="background:rgba(0,217,255,0.08); border:1px solid rgba(0,217,255,0.3); border-radius:8px; padding:10px 12px; margin-bottom:8px;">
+                        <div style="font-size:11px; font-weight:700; color:#00D9FF; letter-spacing:0.8px;">📦 DATASETS IN ZIP ({len(zip_candidates)})</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+                selected_zip_entry = st.selectbox(
+                    "Select dataset from ZIP:",
+                    options=zip_candidates,
+                    index=0,
+                    key=f"zip_selector_{uploaded_file.name}",
+                    help="Select which dataset from inside the ZIP file you would like to analyze."
+                )
+        except Exception as z_err:
+            st.error(f"Error reading ZIP file: {str(z_err)}")
 
     # Navigation Radio
     st.markdown(
@@ -920,19 +1270,41 @@ with st.sidebar:
 # 8. GLOBAL FILE PROCESSING (SYNC ACROSS ALL TABS)
 # ==============================================================================
 if uploaded_file is not None:
-    # Check if a new file was uploaded or re-uploaded
-    if st.session_state.active_file_name != uploaded_file.name:
+    is_zip = uploaded_file.name.lower().endswith(".zip")
+    if is_zip:
+        current_file_key = f"{uploaded_file.name}::{selected_zip_entry}"
+        display_name = f"{uploaded_file.name} ({selected_zip_entry})" if selected_zip_entry else uploaded_file.name
+        display_type = get_file_type_label(selected_zip_entry or "", is_inside_zip=True)
+    else:
+        current_file_key = uploaded_file.name
+        display_name = uploaded_file.name
+        display_type = get_file_type_label(uploaded_file.name, is_inside_zip=False)
+
+    # Check if a new file was uploaded or a different file inside ZIP was selected
+    if st.session_state.active_file_key != current_file_key:
         if uploaded_file.size > MAX_FILE_SIZE_BYTES:
             st.session_state.processing_error = f"File size ({uploaded_file.size / 1024 / 1024:.1f}MB) exceeds the 1GB limit."
             st.session_state.active_analysis = None
             st.session_state.active_file_name = uploaded_file.name
+            st.session_state.active_file_key = current_file_key
+        elif is_zip and not selected_zip_entry:
+            st.session_state.processing_error = "The uploaded ZIP archive contains no supported tabular dataset files (CSV, XLSX, XLS, JSON, TXT, PARQUET)."
+            st.session_state.active_analysis = None
+            st.session_state.active_file_name = uploaded_file.name
+            st.session_state.active_file_key = current_file_key
         else:
             try:
-                df_uploaded = pd.read_csv(uploaded_file)
-                if df_uploaded.empty:
-                    st.session_state.processing_error = "The uploaded CSV file contains no data rows."
+                # Load dataframe based on file format
+                if is_zip:
+                    df_uploaded = load_zip_dataset(uploaded_file, selected_zip_entry)
+                else:
+                    df_uploaded = load_dataset_from_file_or_buffer(uploaded_file, uploaded_file.name)
+
+                if df_uploaded is None or df_uploaded.empty:
+                    st.session_state.processing_error = "The uploaded dataset contains no data rows."
                     st.session_state.active_analysis = None
-                    st.session_state.active_file_name = uploaded_file.name
+                    st.session_state.active_file_name = display_name
+                    st.session_state.active_file_key = current_file_key
                 else:
                     analysis_result, err = run_model_inference(df_uploaded, pipeline)
                     if err:
@@ -942,16 +1314,23 @@ if uploaded_file is not None:
                         st.session_state.processing_error = None
                         st.session_state.active_analysis = analysis_result
                         st.session_state.active_analysis["raw_df"] = df_uploaded
-                        st.session_state.active_analysis["file_name"] = uploaded_file.name
+                        st.session_state.active_analysis["file_name"] = display_name
+                        st.session_state.active_analysis["file_type"] = display_type
+                        st.session_state.active_analysis["file_size_formatted"] = format_file_size(uploaded_file.size)
                         st.session_state.active_analysis["file_size_kb"] = uploaded_file.size / 1024
+                        st.session_state.active_analysis["num_rows"] = int(len(df_uploaded))
+                        st.session_state.active_analysis["num_cols"] = int(len(df_uploaded.columns))
                         st.session_state.active_analysis["analyzed_time"] = current_time
-                    st.session_state.active_file_name = uploaded_file.name
+                    st.session_state.active_file_name = display_name
+                    st.session_state.active_file_key = current_file_key
             except Exception as read_exc:
-                st.session_state.processing_error = f"Unable to read CSV file: {str(read_exc)}"
+                st.session_state.processing_error = f"Unable to read file: {str(read_exc)}"
                 st.session_state.active_analysis = None
-                st.session_state.active_file_name = uploaded_file.name
+                st.session_state.active_file_name = display_name
+                st.session_state.active_file_key = current_file_key
 else:
     # File was removed / cleared
+    st.session_state.active_file_key = None
     st.session_state.active_file_name = None
     st.session_state.active_analysis = None
     st.session_state.processing_error = None
@@ -1015,7 +1394,11 @@ with ref_col2:
             <div style="display:flex; align-items:center; gap:10px; padding:8px 0; font-size:13px; color:#8FA8C0;">
                 <span>📁 Active File: <b style="color:#00D9FF;">{analysis['file_name']}</b></span>
                 <span>•</span>
-                <span>📊 Rows: <b style="color:#EAF4FF;">{analysis['total_records']:,}</b></span>
+                <span>📄 Type: <b style="color:#EAF4FF;">{analysis.get('file_type', 'Dataset')}</b></span>
+                <span>•</span>
+                <span>💾 Size: <b style="color:#EAF4FF;">{analysis.get('file_size_formatted', '--')}</b></span>
+                <span>•</span>
+                <span>📊 Shape: <b style="color:#00E6A0;">{analysis.get('num_rows', analysis['total_records']):,} rows × {analysis.get('num_cols', len(analysis['raw_df'].columns))} cols</b></span>
                 <span>•</span>
                 <span>⏱️ Inferred at: <span style="color:#EAF4FF;">{analysis['analyzed_time']}</span></span>
             </div>
@@ -1045,7 +1428,7 @@ if pipeline is None:
         st.error(model_load_error)
     st.stop()
 
-# Processing Error Display Guard (e.g. Missing columns, bad CSV)
+# Processing Error Display Guard (e.g. Missing columns, bad dataset)
 if proc_error is not None:
     if isinstance(proc_error, dict) and proc_error.get("error_type") == "missing_features":
         st.markdown(
@@ -1055,7 +1438,7 @@ if proc_error is not None:
                 <div>
                     <b style="color:#FF3B6B; font-size:15px;">Prediction cannot be performed because required model features are missing.</b>
                     <div style="font-size:13px; color:#EAF4FF; margin-top:4px;">
-                        The uploaded CSV lacks one or more critical columns trained into the Random Forest pipeline.
+                        The uploaded dataset lacks one or more critical columns trained into the Random Forest pipeline.
                     </div>
                 </div>
             </div>
@@ -1085,15 +1468,15 @@ if proc_error is not None:
 # ==============================================================================
 if navigation == "🏠 Dashboard":
     if analysis is None:
-        # State: NO CSV UPLOADED
+        # State: NO DATASET UPLOADED
         st.markdown(
             """
             <div class="alert-banner-info">
                 <span style="font-size:24px;">📤</span>
                 <div>
-                    <b style="color:#00D9FF; font-size:15px;">Upload a CSV file from the sidebar to start cyber threat detection.</b>
+                    <b style="color:#00D9FF; font-size:15px;">Upload a dataset file from the sidebar to start cyber threat detection.</b>
                     <div style="font-size:13px; color:#8FA8C0; margin-top:2px;">
-                        Select or drag and drop a UNSW-NB15 formatted network traffic CSV into the Control Panel.
+                        Select or drag and drop a UNSW-NB15 formatted network traffic dataset (CSV, ZIP, XLSX, XLS, JSON, TXT, PARQUET) into the Control Panel.
                     </div>
                 </div>
             </div>
@@ -1264,13 +1647,16 @@ if navigation == "🏠 Dashboard":
         )
 
     else:
-        # State: CSV UPLOADED & LIVE ANALYSIS AVAILABLE
+        # State: DATASET UPLOADED & LIVE ANALYSIS AVAILABLE
         tot = analysis["total_records"]
         tc = analysis["threat_count"]
         nc = analysis["normal_count"]
         tr = analysis["threat_rate"]
         nr = analysis["normal_rate"]
         acc_info = analysis["accuracy_data"]
+
+        # File Information Section
+        render_file_information_section(analysis)
 
         # Alert Banner based on threat findings
         if tc > 0:
@@ -1441,7 +1827,7 @@ if navigation == "🏠 Dashboard":
                             </div>
                         </div>
                         <div style="text-align:center; color:#8FA8C0; font-size:12px; padding:12px 6px; line-height:1.5;">
-                            Ground-truth <b>label</b> column not available in uploaded CSV.<br>
+                            Ground-truth <b>label</b> column not available in uploaded dataset.<br>
                             Accuracy cannot be calculated for this file.
                         </div>
                     </div>
@@ -1571,7 +1957,7 @@ elif navigation == "🔍 Threat Detection":
                 <div>
                     <b style="color:#00D9FF; font-size:15px;">No Data Available</b>
                     <div style="font-size:13px; color:#8FA8C0; margin-top:2px;">
-                        Upload a network traffic CSV file from the left sidebar to execute cyber threat detection.
+                        Upload a network traffic dataset (CSV, ZIP, XLSX, XLS, JSON, TXT, PARQUET) from the left sidebar to execute cyber threat detection.
                     </div>
                 </div>
             </div>
@@ -1706,7 +2092,7 @@ elif navigation == "📊 Analytics":
                 <div>
                     <b style="color:#00D9FF; font-size:15px;">No Analytics Available</b>
                     <div style="font-size:13px; color:#8FA8C0; margin-top:2px;">
-                        Upload a network traffic CSV in the sidebar to generate live analytics.
+                        Upload a network traffic dataset (CSV, ZIP, XLSX, XLS, JSON, TXT, PARQUET) in the sidebar to generate live analytics.
                     </div>
                 </div>
             </div>
@@ -1721,6 +2107,9 @@ elif navigation == "📊 Analytics":
         nr = analysis["normal_rate"]
         raw_df = analysis["raw_df"]
         acc_info = analysis["accuracy_data"]
+
+        # File Information Section
+        render_file_information_section(analysis)
 
         # Dataset Shape & Missing Values
         missing_count = int(raw_df.isna().sum().sum())
@@ -1885,7 +2274,7 @@ elif navigation == "ℹ️ About":
                     • Threat Detection<br>
                     • Binary Classification (0 = Normal, 1 = Threat)<br>
                     • UNSW-NB15 Dataset<br>
-                    • CSV Based Analysis
+                    • Multi-Format Analysis (CSV, ZIP, XLSX, XLS, JSON, TXT, PARQUET)
                 </div>
             </div>
             """,
