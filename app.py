@@ -30,19 +30,20 @@ st.set_page_config(
 
 # Constants
 MODEL_PATH = Path("models/threat_model.pkl")
+SIH_MODEL_PATH = Path("models/sih_threat_model.pkl")
 MAX_FILE_SIZE_MB = 1024
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
 # Non-input columns dropped during inference if present
-DROP_COLUMNS = ["id", "attack_cat", "label"]
+DROP_COLUMNS = ["id", "attack_cat", "label", "flow_id"]
 
 # ==============================================================================
-# 2. CACHED MODEL LOADER
+# 2. CACHED MODEL LOADERS (DUAL-ENGINE ARCHITECTURE)
 # ==============================================================================
 @st.cache_resource(show_spinner=False)
 def load_threat_model():
     """
-    Loads the serialized Scikit-learn Pipeline from models/threat_model.pkl.
+    Loads the serialized Scikit-learn Pipeline from models/threat_model.pkl (UNSW-NB15).
     Utilizes Streamlit caching to prevent reloading on subsequent interactions.
     """
     if not MODEL_PATH.exists():
@@ -53,7 +54,22 @@ def load_threat_model():
     except Exception as exc:
         return None, f"Error loading model: {str(exc)}"
 
+@st.cache_resource(show_spinner=False)
+def load_sih_threat_model():
+    """
+    Loads the serialized SIH-145 Multi-Threat model bundle from models/sih_threat_model.pkl.
+    Supports 7 threat categories (BENIGN, DOS, DDOS, PORT_SCAN, BRUTE_FORCE, BOTNET, DATA_EXFILTRATION).
+    """
+    if not SIH_MODEL_PATH.exists():
+        return None, f"Model file not found at '{SIH_MODEL_PATH}'. Please verify the models directory."
+    try:
+        bundle = joblib.load(SIH_MODEL_PATH)
+        return bundle, None
+    except Exception as exc:
+        return None, f"Error loading SIH model: {str(exc)}"
+
 pipeline, model_load_error = load_threat_model()
+sih_bundle, sih_model_load_error = load_sih_threat_model()
 
 # ==============================================================================
 # 3. DYNAMIC DATE & TIME
@@ -802,6 +818,280 @@ def run_model_inference(df_raw: pd.DataFrame, ml_pipeline):
     }, None
 
 # ==============================================================================
+# 5a. UNIVERSAL NETWORK ADAPTER & DUAL-ENGINE INFERENCE
+# ==============================================================================
+SIH_SYNONYM_MAP = {
+    "duration_ms": ["duration_ms", "duration", "flow_duration", "dur_ms", "dur", "time", "flow_time"],
+    "protocol": ["protocol", "proto", "protocol_type", "ip_proto", "trans_protocol"],
+    "src_port": ["src_port", "sport", "source_port", "srcport", "src_pt", "s_port"],
+    "dst_port": ["dst_port", "dport", "destination_port", "dstport", "dst_pt", "d_port"],
+    "packets": ["packets", "spkts", "pkts", "packet_count", "total_packets", "tot_pkts", "total_fwd_packets", "fwd_packets"],
+    "bytes": ["bytes", "sbytes", "byte_count", "total_bytes", "tot_bytes", "total_length_of_fwd_packets", "fwd_bytes"],
+    "packet_rate": ["packet_rate", "rate", "flow_packets_s", "pkts_rate", "packet_per_sec", "flow_pkts_s"],
+    "byte_rate": ["byte_rate", "flow_bytes_s", "bytes_rate", "bytes_per_sec"],
+    "avg_packet_size": ["avg_packet_size", "mean_packet_size", "smean", "packet_length_mean", "avg_pkt_sz"],
+    "min_packet_size": ["min_packet_size", "packet_length_min", "min_pkt_sz"],
+    "max_packet_size": ["max_packet_size", "packet_length_max", "max_pkt_sz"],
+    "syn_count": ["syn_count", "syn_flag_count", "syn_flags", "synack", "syn"],
+    "ack_count": ["ack_count", "ack_flag_count", "ack_flags", "ackdat", "ack"],
+    "rst_count": ["rst_count", "rst_flag_count", "rst_flags", "rst"],
+    "fin_count": ["fin_count", "fin_flag_count", "fin_flags", "fin"],
+    "ttl": ["ttl", "sttl", "time_to_live", "ip_ttl"],
+    "payload_entropy": ["payload_entropy", "entropy"],
+    "unique_dst_ports": ["unique_dst_ports", "ct_dst_sport_ltm", "dst_ports_count"],
+    "failed_connections": ["failed_connections", "ct_srv_src", "failed_conn", "failed_attempts"],
+    "outbound_ratio": ["outbound_ratio", "outbound", "out_ratio"]
+}
+
+PROTO_MAP = {
+    "tcp": 6, "udp": 17, "icmp": 1, "gre": 47, "ipv6": 41, "ip": 4, "esp": 50,
+    "6": 6, "17": 17, "1": 1
+}
+
+def adapt_dataframe_for_sih(df_raw: pd.DataFrame, sih_bundle):
+    """
+    Intelligently maps and adapts ANY tabular network traffic dataset to the SIH-145 feature space.
+    Uses column normalization, synonym mapping, protocol encoding, derived feature math,
+    and security baseline imputation so any user's network data can be analyzed.
+    """
+    features = sih_bundle["features"]
+    medians = sih_bundle["feature_medians"]
+
+    # Normalize column names in user dataframe (lower-case, stripped, underscores)
+    col_map = {}
+    for col in df_raw.columns:
+        norm = str(col).strip().lower().replace(" ", "_").replace("-", "_")
+        col_map[norm] = col
+
+    mapped_df = pd.DataFrame(index=df_raw.index)
+    directly_mapped = []
+
+    for target_feat in features:
+        synonyms = SIH_SYNONYM_MAP.get(target_feat, [target_feat])
+        matched_user_col = None
+        for syn in synonyms:
+            if syn in col_map:
+                matched_user_col = col_map[syn]
+                break
+
+        if matched_user_col is not None:
+            val_series = df_raw[matched_user_col]
+            # Protocol translation if string
+            if target_feat == "protocol":
+                mapped_df[target_feat] = val_series.astype(str).str.lower().map(PROTO_MAP)
+                # If numeric or unmapped, convert to numeric
+                mapped_df[target_feat] = pd.to_numeric(mapped_df[target_feat], errors="coerce").fillna(val_series)
+                mapped_df[target_feat] = pd.to_numeric(mapped_df[target_feat], errors="coerce").fillna(medians[target_feat])
+            elif target_feat == "duration_ms":
+                # Convert duration in seconds to ms if values are very small
+                num_dur = pd.to_numeric(val_series, errors="coerce").fillna(medians[target_feat])
+                if num_dur.max() < 100 and num_dur.mean() < 10:
+                    mapped_df[target_feat] = num_dur * 1000.0
+                else:
+                    mapped_df[target_feat] = num_dur
+            else:
+                mapped_df[target_feat] = pd.to_numeric(val_series, errors="coerce").fillna(medians[target_feat])
+            directly_mapped.append(matched_user_col)
+        else:
+            mapped_df[target_feat] = medians[target_feat]
+
+    # Calculate derived features if primary components exist
+    if "bytes" in mapped_df.columns and "packets" in mapped_df.columns:
+        if "avg_packet_size" not in directly_mapped:
+            mapped_df["avg_packet_size"] = mapped_df["bytes"] / mapped_df["packets"].clip(lower=1)
+    if "packets" in mapped_df.columns and "duration_ms" in mapped_df.columns:
+        if "packet_rate" not in directly_mapped:
+            mapped_df["packet_rate"] = mapped_df["packets"] / (mapped_df["duration_ms"] / 1000.0).clip(lower=0.001)
+    if "bytes" in mapped_df.columns and "duration_ms" in mapped_df.columns:
+        if "byte_rate" not in directly_mapped:
+            mapped_df["byte_rate"] = mapped_df["bytes"] / (mapped_df["duration_ms"] / 1000.0).clip(lower=0.001)
+
+    is_native = len(directly_mapped) >= 18 and all(f in df_raw.columns for f in features)
+    imputed_count = len(features) - len(directly_mapped)
+
+    adapter_info = {
+        "is_native": is_native,
+        "mapped_count": len(directly_mapped),
+        "imputed_count": max(0, imputed_count),
+        "mapped_columns": directly_mapped
+    }
+
+    return mapped_df[features], adapter_info
+
+def run_sih_inference(df_raw: pd.DataFrame, sih_bundle):
+    """
+    Executes Multi-Class Threat Inference using the SIH-145 model bundle.
+    Detects BENIGN, DOS, DDOS, PORT_SCAN, BRUTE_FORCE, BOTNET, and DATA_EXFILTRATION.
+    """
+    if sih_bundle is None:
+        return None, "SIH Threat Model bundle is not loaded."
+
+    pipeline = sih_bundle["pipeline"]
+    classes = sih_bundle["classes"]
+
+    # Adapt dataset
+    X_adapted, adapter_info = adapt_dataframe_for_sih(df_raw, sih_bundle)
+
+    try:
+        raw_preds = pipeline.predict(X_adapted)
+    except Exception as e:
+        return None, f"SIH Prediction failed: {str(e)}"
+
+    # Confidences
+    confidences = None
+    if hasattr(pipeline, "predict_proba"):
+        try:
+            proba_matrix = pipeline.predict_proba(X_adapted)
+            classes_list = list(pipeline.classes_)
+            confidences = [round(float(proba_matrix[i][classes_list.index(p)]) * 100, 2) for i, p in enumerate(raw_preds)]
+        except Exception:
+            confidences = None
+
+    # Binary mappings & labels
+    binary_preds = [0 if p == "BENIGN" else 1 for p in raw_preds]
+    status_labels = ["Normal" if p == "BENIGN" else "Threat" for p in raw_preds]
+    attack_types = [str(p) for p in raw_preds]
+
+    total_records = len(binary_preds)
+    threat_count = int(sum(binary_preds))
+    normal_count = int(total_records - threat_count)
+    threat_rate = (threat_count / total_records * 100) if total_records > 0 else 0.0
+    normal_rate = (normal_count / total_records * 100) if total_records > 0 else 0.0
+
+    # Build result DataFrame
+    res_df = df_raw.copy()
+    res_df.insert(0, "#", range(1, len(res_df) + 1))
+    res_df.insert(1, "Prediction", binary_preds)
+    res_df.insert(2, "Status", status_labels)
+    res_df.insert(3, "Attack Type", attack_types)
+    if confidences is not None:
+        res_df.insert(4, "Confidence (%)", confidences)
+
+    # Attack breakdown
+    attack_breakdown = {}
+    for att in classes:
+        cnt = int(sum(1 for p in raw_preds if p == att))
+        if cnt > 0:
+            attack_breakdown[att] = {
+                "count": cnt,
+                "percentage": (cnt / total_records * 100) if total_records > 0 else 0.0,
+                "is_threat": (att != "BENIGN")
+            }
+
+    # Ground-truth evaluation if 'label' column exists
+    has_ground_truth = "label" in df_raw.columns
+    accuracy_data = {"has_label": False}
+
+    if has_ground_truth:
+        try:
+            raw_labels = [str(l).strip().upper() for l in df_raw["label"].tolist()]
+            pred_labels = [str(p).strip().upper() for p in raw_preds]
+            correct_count = sum(1 for yt, yp in zip(raw_labels, pred_labels) if yt == yp)
+            error_count = total_records - correct_count
+            acc_pct = (correct_count / total_records * 100) if total_records > 0 else 0.0
+            err_pct = (error_count / total_records * 100) if total_records > 0 else 0.0
+
+            # Binary confusion matrix
+            tp = sum(1 for yt, yp in zip(raw_labels, binary_preds) if yt != "BENIGN" and yp == 1)
+            fp = sum(1 for yt, yp in zip(raw_labels, binary_preds) if yt == "BENIGN" and yp == 1)
+            tn = sum(1 for yt, yp in zip(raw_labels, binary_preds) if yt == "BENIGN" and yp == 0)
+            fn = sum(1 for yt, yp in zip(raw_labels, binary_preds) if yt != "BENIGN" and yp == 0)
+
+            accuracy_data = {
+                "has_label": True,
+                "correct_count": correct_count,
+                "error_count": error_count,
+                "accuracy_percentage": acc_pct,
+                "error_percentage": err_pct,
+                "tp": tp,
+                "fp": fp,
+                "tn": tn,
+                "fn": fn
+            }
+        except Exception:
+            accuracy_data = {"has_label": False}
+
+    return {
+        "result_df": res_df,
+        "total_records": total_records,
+        "threat_count": threat_count,
+        "normal_count": normal_count,
+        "threat_rate": threat_rate,
+        "normal_rate": normal_rate,
+        "accuracy_data": accuracy_data,
+        "has_confidences": confidences is not None,
+        "is_multiclass": True,
+        "active_engine_name": "SIH-145 Multi-Threat Classifier",
+        "attack_breakdown": attack_breakdown,
+        "adapter_info": adapter_info
+    }, None
+
+def detect_best_engine(df_raw: pd.DataFrame, sih_bundle, unsw_pipeline) -> str:
+    """
+    Analyzes input DataFrame features and determines the optimal ML engine.
+    """
+    sih_features = set(sih_bundle["features"]) if sih_bundle else set()
+    unsw_features = set(getattr(unsw_pipeline, "feature_names_in_", [])) if unsw_pipeline else set()
+
+    cols_lower = [str(c).strip().lower() for c in df_raw.columns]
+
+    sih_matches = sum(1 for c in cols_lower if c in sih_features)
+    unsw_matches = sum(1 for c in cols_lower if c in unsw_features)
+
+    if sih_matches >= 3 and sih_matches >= unsw_matches:
+        return "SIH-145"
+    if unsw_matches >= 5:
+        return "UNSW-NB15"
+
+    return "Universal-SIH"
+
+def run_universal_threat_inference(df_raw: pd.DataFrame, unsw_pipeline, sih_bundle, engine_choice: str = "🤖 Smart Auto-Detect (Recommended)"):
+    """
+    Master inference dispatcher supporting UNSW-NB15, SIH-145, and the Universal Adaptive Engine.
+    """
+    target_engine = None
+    if "SIH-145" in engine_choice:
+        target_engine = "SIH-145"
+    elif "UNSW-NB15" in engine_choice:
+        target_engine = "UNSW-NB15"
+    else:
+        target_engine = detect_best_engine(df_raw, sih_bundle, unsw_pipeline)
+
+    if target_engine in ["SIH-145", "Universal-SIH"]:
+        if sih_bundle is not None:
+            res, err = run_sih_inference(df_raw, sih_bundle)
+            if res is not None:
+                if target_engine == "Universal-SIH" and not res["adapter_info"]["is_native"]:
+                    res["active_engine_name"] = "Universal Adaptive AI Engine"
+                return res, None
+            return None, err
+        elif unsw_pipeline is not None:
+            return run_model_inference(df_raw, unsw_pipeline)
+        else:
+            return None, "No threat models available."
+    else:
+        # UNSW-NB15 Engine
+        if unsw_pipeline is not None:
+            res, err = run_model_inference(df_raw, unsw_pipeline)
+            if res is not None:
+                res["is_multiclass"] = False
+                res["active_engine_name"] = "UNSW-NB15 Benchmark Model"
+                res["attack_breakdown"] = {}
+                res["adapter_info"] = {"is_native": True, "mapped_count": len(df_raw.columns), "imputed_count": 0}
+                return res, None
+            # If UNSW fails due to missing features, fallback to SIH Universal Adapter!
+            if sih_bundle is not None:
+                res_fallback, err_fb = run_sih_inference(df_raw, sih_bundle)
+                if res_fallback is not None:
+                    res_fallback["active_engine_name"] = "Universal Adaptive AI Engine (Fallback)"
+                    return res_fallback, None
+            return None, err
+        elif sih_bundle is not None:
+            return run_sih_inference(df_raw, sih_bundle)
+        else:
+            return None, "No threat models available."
+
+# ==============================================================================
 # 5b. MULTI-FORMAT DATA LOADERS & UTILITIES
 # ==============================================================================
 SUPPORTED_TABULAR_EXTENSIONS = {".csv", ".xlsx", ".xls", ".json", ".txt", ".parquet"}
@@ -1070,7 +1360,8 @@ def load_zip_dataset(uploaded_file, selected_entry: str) -> pd.DataFrame:
 def render_file_information_section(analysis_dict):
     """
     Renders the File Information section showing File Name, File Type,
-    File Size, Number of Rows, and Number of Columns.
+    AI Model Engine, File Size, Number of Rows, and Number of Columns,
+    plus Universal Adapter details when custom data is uploaded.
     """
     file_name = analysis_dict.get("file_name", "Unknown")
     file_type = analysis_dict.get("file_type", "Dataset")
@@ -1078,12 +1369,34 @@ def render_file_information_section(analysis_dict):
     num_rows = analysis_dict.get("num_rows", analysis_dict.get("total_records", 0))
     raw_df = analysis_dict.get("raw_df")
     num_cols = analysis_dict.get("num_cols", len(raw_df.columns) if raw_df is not None else 0)
+    engine_name = analysis_dict.get("active_engine_name", "AI Threat Classifier")
+    adapter_info = analysis_dict.get("adapter_info", {})
 
-    st.markdown('<div class="section-header">📁 FILE INFORMATION</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">📁 FILE & MODEL INFORMATION</div>', unsafe_allow_html=True)
+
+    # Universal Adapter Alert Pill if dataset was adapted
+    if adapter_info and not adapter_info.get("is_native", True):
+        mapped_c = adapter_info.get("mapped_count", 0)
+        imputed_c = adapter_info.get("imputed_count", 0)
+        st.markdown(
+            f"""
+            <div style="background:rgba(0,217,255,0.08); border:1px solid rgba(0,217,255,0.35); border-radius:10px; padding:12px 16px; margin-bottom:14px; display:flex; align-items:center; gap:12px;">
+                <span style="font-size:22px;">⚡</span>
+                <div>
+                    <b style="color:#00D9FF; font-size:13px;">UNIVERSAL NETWORK TRAFFIC ADAPTER ACTIVE</b>
+                    <div style="color:#EAF4FF; font-size:12px; margin-top:2px;">
+                        Successfully identified and mapped <b>{mapped_c}</b> network features from your dataset. {f'Imputed {imputed_c} auxiliary flow attributes with baseline medians.' if imputed_c > 0 else ''} Real-time threat detection executed successfully!
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
     st.markdown(
         f"""
         <div class="soc-card" style="margin-bottom:20px; padding:18px 22px;">
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:14px;">
                 <div style="background:rgba(3,15,32,0.7); border:1px solid rgba(8,120,209,0.3); border-radius:10px; padding:12px 14px;">
                     <div style="font-size:11px; font-weight:700; color:#8FA8C0; letter-spacing:1px;">FILE NAME</div>
                     <div style="font-size:13px; font-weight:700; color:#00D9FF; margin-top:5px; word-break:break-all; font-family:'JetBrains Mono', monospace;" title="{file_name}">{file_name}</div>
@@ -1091,6 +1404,10 @@ def render_file_information_section(analysis_dict):
                 <div style="background:rgba(3,15,32,0.7); border:1px solid rgba(8,120,209,0.3); border-radius:10px; padding:12px 14px;">
                     <div style="font-size:11px; font-weight:700; color:#8FA8C0; letter-spacing:1px;">FILE TYPE</div>
                     <div style="font-size:13px; font-weight:700; color:#EAF4FF; margin-top:5px;">{file_type}</div>
+                </div>
+                <div style="background:rgba(3,15,32,0.7); border:1px solid rgba(8,120,209,0.3); border-radius:10px; padding:12px 14px;">
+                    <div style="font-size:11px; font-weight:700; color:#8FA8C0; letter-spacing:1px;">AI MODEL ENGINE</div>
+                    <div style="font-size:13px; font-weight:700; color:#00E6A0; margin-top:5px;">{engine_name}</div>
                 </div>
                 <div style="background:rgba(3,15,32,0.7); border:1px solid rgba(8,120,209,0.3); border-radius:10px; padding:12px 14px;">
                     <div style="font-size:11px; font-weight:700; color:#8FA8C0; letter-spacing:1px;">FILE SIZE</div>
@@ -1127,6 +1444,9 @@ if "last_refresh_time" not in st.session_state:
 
 if "processing_error" not in st.session_state:
     st.session_state.processing_error = None
+
+if "selected_engine" not in st.session_state:
+    st.session_state.selected_engine = "🤖 Smart Auto-Detect (Recommended)"
 
 # ==============================================================================
 # 7. SIDEBAR SETUP
@@ -1202,9 +1522,32 @@ with st.sidebar:
         except Exception as z_err:
             st.error(f"Error reading ZIP file: {str(z_err)}")
 
+    # AI Model Engine Selector
+    st.markdown(
+        '<div style="font-size:13px; font-weight:600; color:#EAF4FF; margin-top:4px; margin-bottom:6px;">AI Detection Engine</div>',
+        unsafe_allow_html=True
+    )
+    engine_choices = [
+        "🤖 Smart Auto-Detect (Recommended)",
+        "⚡ SIH-145 Multi-Threat Engine (7 Attack Classes)",
+        "🔬 UNSW-NB15 Benchmark Engine (Binary Classifier)"
+    ]
+    cur_eng_idx = engine_choices.index(st.session_state.selected_engine) if st.session_state.selected_engine in engine_choices else 0
+    chosen_engine = st.selectbox(
+        "AI Detection Engine",
+        options=engine_choices,
+        index=cur_eng_idx,
+        label_visibility="collapsed",
+        help="Select which AI model to use. Smart Auto-Detect selects the ideal model based on your dataset columns."
+    )
+    if chosen_engine != st.session_state.selected_engine:
+        st.session_state.selected_engine = chosen_engine
+        st.session_state.active_file_key = None
+        st.rerun()
+
     # Navigation Radio
     st.markdown(
-        '<div class="section-header">🧭 NAVIGATION</div>',
+        '<div class="section-header" style="margin-top:16px;">🧭 NAVIGATION</div>',
         unsafe_allow_html=True
     )
 
@@ -1220,25 +1563,44 @@ with st.sidebar:
     )
 
     # System Status & Model Info
-    st.markdown("<div style='margin-top:25px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
     st.markdown(
         '<div class="section-header">📡 SYSTEM STATUS</div>',
         unsafe_allow_html=True
     )
 
-    if pipeline is not None:
+    unsw_ok = pipeline is not None
+    sih_ok = sih_bundle is not None
+
+    if unsw_ok and sih_ok:
         st.markdown(
             """
             <div style="background:rgba(7,26,43,0.7); border:1px solid rgba(8,120,209,0.3); border-radius:10px; padding:12px 14px;">
                 <div class="online-badge">
                     <div class="pulse-dot"></div>
-                    <span>System Online</span>
+                    <span>Dual AI Engines Online</span>
                 </div>
                 <div style="font-size:11px; color:#8FA8C0; margin-top:8px;">
-                    Model: <b style="color:#00D9FF;">threat_model.pkl</b>
+                    Model 1: <b style="color:#00D9FF;">SIH-145 (7 Attack Classes)</b>
                 </div>
                 <div style="font-size:11px; color:#8FA8C0;">
-                    Pipeline: <span style="color:#00E6A0;">Active & Loaded</span>
+                    Model 2: <b style="color:#00E6A0;">UNSW-NB15 (Binary Classifier)</b>
+                </div>
+                <div style="font-size:11px; color:#8FA8C0; margin-top:4px;">
+                    Adapter: <span style="color:#FF9F43;">Universal Network Flow Active</span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    elif sih_ok or unsw_ok:
+        avail_name = "SIH-145" if sih_ok else "UNSW-NB15"
+        st.markdown(
+            f"""
+            <div style="background:rgba(7,26,43,0.7); border:1px solid rgba(8,120,209,0.3); border-radius:10px; padding:12px 14px;">
+                <div class="online-badge">
+                    <div class="pulse-dot"></div>
+                    <span>System Online ({avail_name})</span>
                 </div>
             </div>
             """,
@@ -1272,15 +1634,15 @@ with st.sidebar:
 if uploaded_file is not None:
     is_zip = uploaded_file.name.lower().endswith(".zip")
     if is_zip:
-        current_file_key = f"{uploaded_file.name}::{selected_zip_entry}"
+        current_file_key = f"{uploaded_file.name}::{selected_zip_entry}::{st.session_state.selected_engine}"
         display_name = f"{uploaded_file.name} ({selected_zip_entry})" if selected_zip_entry else uploaded_file.name
         display_type = get_file_type_label(selected_zip_entry or "", is_inside_zip=True)
     else:
-        current_file_key = uploaded_file.name
+        current_file_key = f"{uploaded_file.name}::{st.session_state.selected_engine}"
         display_name = uploaded_file.name
         display_type = get_file_type_label(uploaded_file.name, is_inside_zip=False)
 
-    # Check if a new file was uploaded or a different file inside ZIP was selected
+    # Check if a new file was uploaded or a different file inside ZIP was selected or engine changed
     if st.session_state.active_file_key != current_file_key:
         if uploaded_file.size > MAX_FILE_SIZE_BYTES:
             st.session_state.processing_error = f"File size ({uploaded_file.size / 1024 / 1024:.1f}MB) exceeds the 1GB limit."
@@ -1306,7 +1668,9 @@ if uploaded_file is not None:
                     st.session_state.active_file_name = display_name
                     st.session_state.active_file_key = current_file_key
                 else:
-                    analysis_result, err = run_model_inference(df_uploaded, pipeline)
+                    analysis_result, err = run_universal_threat_inference(
+                        df_uploaded, pipeline, sih_bundle, st.session_state.selected_engine
+                    )
                     if err:
                         st.session_state.processing_error = err
                         st.session_state.active_analysis = None
@@ -1351,7 +1715,7 @@ with header_col1:
                 <span>🛡️</span> Cyber Threat Detection System
             </div>
             <div class="soc-hero-subtitle">
-                Machine Learning based network traffic classification using the UNSW-NB15 dataset.
+                AI-Powered Network Traffic Classification & Threat Detection • Dual ML Engines (UNSW-NB15 & SIH-145) • Universal Network Flow Adapter
             </div>
         </div>
         """,
@@ -1407,25 +1771,23 @@ with ref_col2:
         )
 
 # Critical Model Check Guard
-if pipeline is None:
+if pipeline is None and sih_bundle is None:
     st.markdown(
         """
         <div class="soc-card" style="border-color:#FF3B6B;">
             <div style="color:#FF3B6B; font-size:20px; font-weight:800; display:flex; align-items:center; gap:8px;">
-                🔴 Model Unavailable
+                🔴 Models Unavailable
             </div>
             <div style="color:#EAF4FF; font-size:14px; margin-top:8px;">
-                The Cyber Threat Detection Machine Learning model could not be loaded into memory.
+                Neither the UNSW-NB15 nor the SIH-145 Machine Learning models could be loaded into memory.
             </div>
             <div style="background:rgba(0,0,0,0.4); border-radius:8px; padding:12px; margin-top:12px; font-family:'JetBrains Mono', monospace; font-size:12px; color:#FF9F43;">
-                Expected location: models/threat_model.pkl
+                Expected locations: models/threat_model.pkl, models/sih_threat_model.pkl
             </div>
         </div>
         """,
         unsafe_allow_html=True
     )
-    if model_load_error:
-        st.error(model_load_error)
     st.stop()
 
 # Processing Error Display Guard (e.g. Missing columns, bad dataset)
@@ -1861,6 +2223,39 @@ if navigation == "🏠 Dashboard":
 
         st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
 
+        # Multi-Class Attack Breakdown Card if multi-class engine was used
+        if analysis.get("is_multiclass") and analysis.get("attack_breakdown"):
+            attack_colors = {
+                "BENIGN": ("#00E6A0", "🛡️"),
+                "DOS": ("#FF3B6B", "💥"),
+                "DDOS": ("#FF0055", "⚡"),
+                "PORT_SCAN": ("#FF9F43", "🔎"),
+                "BRUTE_FORCE": ("#E056FD", "🔓"),
+                "BOTNET": ("#F368E0", "🤖"),
+                "DATA_EXFILTRATION": ("#FF5252", "📤")
+            }
+            attack_badges_html = """
+            <div class="soc-card" style="margin-bottom:20px;">
+                <div class="soc-card-title">⚔️ THREAT TAXONOMY & ATTACK BREAKDOWN</div>
+                <div style="font-size:12px; color:#8FA8C0; margin-bottom:14px;">
+                    Distribution of specific cyber attack vectors classified by the multi-threat machine learning engine.
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px;">
+            """
+            for att_name, att_data in analysis["attack_breakdown"].items():
+                clr, ico = attack_colors.get(att_name, ("#00D9FF", "⚠️"))
+                cnt = att_data["count"]
+                pct = att_data["percentage"]
+                attack_badges_html += f"""
+                <div style="background:rgba(3,15,32,0.85); border:1px solid {clr}55; border-radius:10px; padding:12px 14px;">
+                    <div style="font-size:11px; font-weight:700; color:{clr}; letter-spacing:0.8px;">{ico} {att_name}</div>
+                    <div style="font-size:18px; font-weight:800; color:#FFFFFF; margin-top:4px; font-family:'JetBrains Mono', monospace;">{cnt:,}</div>
+                    <div style="font-size:11px; color:#8FA8C0; margin-top:2px;">{pct:.2f}% of traffic</div>
+                </div>
+                """
+            attack_badges_html += "</div></div>"
+            st.markdown(attack_badges_html, unsafe_allow_html=True)
+
         # Quick Results Preview Card
         st.markdown(
             """
@@ -1872,9 +2267,11 @@ if navigation == "🏠 Dashboard":
         )
 
         preview_cols = ["#", "Prediction", "Status"]
+        if "Attack Type" in analysis["result_df"].columns:
+            preview_cols.append("Attack Type")
         if analysis["has_confidences"]:
             preview_cols.append("Confidence (%)")
-        for col in ["proto", "service", "state", "sbytes", "dbytes", "sttl", "dur"]:
+        for col in ["duration_ms", "protocol", "src_port", "dst_port", "packets", "bytes", "proto", "service", "state", "sbytes", "dbytes", "sttl", "dur"]:
             if col in analysis["result_df"].columns and col not in preview_cols:
                 preview_cols.append(col)
 
@@ -2015,11 +2412,17 @@ elif navigation == "🔍 Threat Detection":
             unsafe_allow_html=True
         )
 
-        filter_col1, filter_col2, filter_col3 = st.columns([2, 2, 4])
+        filter_col1, filter_col2, filter_col3 = st.columns([2.5, 2, 3.5])
         with filter_col1:
+            status_filter_options = ["All Records", "Threats Only (1)", "Normal Only (0)"]
+            if analysis.get("is_multiclass") and "Attack Type" in analysis["result_df"].columns:
+                unique_attacks = sorted(list(analysis["result_df"]["Attack Type"].unique()))
+                for att in unique_attacks:
+                    if att != "BENIGN":
+                        status_filter_options.append(f"Attack: {att}")
             status_filter = st.selectbox(
                 "Filter by Classification Status",
-                ["All Records", "Threats Only (1)", "Normal Only (0)"]
+                status_filter_options
             )
         with filter_col2:
             row_limit = st.selectbox(
@@ -2033,6 +2436,9 @@ elif navigation == "🔍 Threat Detection":
             filtered_df = filtered_df[filtered_df["Prediction"] == 1]
         elif status_filter == "Normal Only (0)":
             filtered_df = filtered_df[filtered_df["Prediction"] == 0]
+        elif status_filter.startswith("Attack: "):
+            chosen_att = status_filter.replace("Attack: ", "")
+            filtered_df = filtered_df[filtered_df["Attack Type"] == chosen_att]
 
         if row_limit != "All Records":
             filtered_df = filtered_df.head(int(row_limit))
@@ -2271,10 +2677,11 @@ elif navigation == "ℹ️ About":
                 <div class="soc-card-title" style="color:#8B5CF6;">🛡️ Cyber Security</div>
                 <div style="font-size:13px; color:#8FA8C0; line-height:1.8;">
                     • Network Traffic Analysis<br>
-                    • Threat Detection<br>
+                    • Multi-Class Threat Detection (DOS, DDOS, Port Scan, Botnet, Brute Force, Exfiltration)<br>
                     • Binary Classification (0 = Normal, 1 = Threat)<br>
-                    • UNSW-NB15 Dataset<br>
-                    • Multi-Format Analysis (CSV, ZIP, XLSX, XLS, JSON, TXT, PARQUET)
+                    • Dual Benchmarks: SIH PS-145 & UNSW-NB15<br>
+                    • Universal Network Flow Adapter (Wireshark, Zeek, NetFlow, Custom CSVs)<br>
+                    • Multi-Format Support (CSV, ZIP, XLSX, XLS, JSON, TXT, PARQUET)
                 </div>
             </div>
             """,

@@ -1,0 +1,23 @@
+feature,description,type
+flow_id,Unique flow identifier,ID
+duration_ms,Unidirectional flow duration in milliseconds,numeric
+protocol,"IP protocol number: 6=TCP, 17=UDP",numeric
+src_port,Source port,numeric
+dst_port,Destination port,numeric
+packets,Packets observed in the unidirectional flow,numeric
+bytes,Total bytes observed,numeric
+packet_rate,Packets per second,numeric
+byte_rate,Bytes per second,numeric
+avg_packet_size,Average packet size in bytes,numeric
+min_packet_size,Minimum packet size in bytes,numeric
+max_packet_size,Maximum packet size in bytes,numeric
+syn_count,TCP SYN count,numeric
+ack_count,TCP ACK count,numeric
+rst_count,TCP RST count,numeric
+fin_count,TCP FIN count,numeric
+ttl,Observed IP time-to-live,numeric
+payload_entropy,Approximate payload entropy,numeric
+unique_dst_ports,Number of unique destination ports contacted,numeric
+failed_connections,Failed connection attempts associated with flow,numeric
+outbound_ratio,Estimated outbound traffic ratio,numeric
+label,Target class,categorical
